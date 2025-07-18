@@ -1,0 +1,23 @@
+{
+    "name": "@nahara/lab",
+    "version": "1.0.0",
+    "fmt": {
+        "lineWidth": 120,
+        "indentWidth": 4
+    },
+    "compilerOptions": {
+        "lib": [
+            "dom",
+            "deno.ns"
+        ]
+    },
+    "exports": {
+        ".": "./mod.ts"
+    },
+    "imports": {
+        "@std/fs": "jsr:@std/fs@^1.0.19",
+        "@std/path": "jsr:@std/path@^1.1.1",
+        "@std/yaml": "jsr:@std/yaml@^1.0.8",
+        "markdown": "npm:markdown@^0.5.0"
+    }
+}

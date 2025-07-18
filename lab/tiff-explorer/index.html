@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>TIFF Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" media="screen" href="./index.css">
+    <script src="./index.js" type="module" defer></script>
+</head>
+<body>
+    <header id="header">
+        <button type="button" id="import-tiff">Import TIFF</button>
+        <button type="button" id="export-tiff" disabled>Export TIFF</button>
+    </header>
+    <div id="split-pane">
+        <div id="ifds">
+            <header><span class="title">Image File Directories</span></header>
+            <div class="view">
+                Click on "Import TIFF" to import your .tiff, .dng or .nef file.
+            </div>
+        </div>
+        <div id="preview">
+            <header><span class="title">Preview</span></header>
+            <div class="view">
+                Click on "Preview" button in Image File Directories pane to preview a certain item.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

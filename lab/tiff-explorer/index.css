@@ -1,0 +1,191 @@
+* {
+    font-family: Inter, Arial, sans-serif;
+    font-size: 12px;
+}
+
+:root {
+    --background-90: #ffffff;
+    --background-80: #efefef;
+    --background-70: #e7e7e7;
+    --background-60: #e0e0e0;
+    --background-50: #cecece;
+
+    --foreground-90: #000000;
+    --foreground-80: #3f3f3f;
+    --foreground-70: #5c5c5c;
+    --foreground-60: #7f7f7f;
+}
+
+input, select {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 24px;
+    border: 1px solid var(--background-50);
+    padding: 2px 12px;
+    box-sizing: border-box;
+
+    &:hover {
+        border: 1px solid var(--foreground-60);
+    }
+}
+
+select, ::picker(select) {
+    -webkit-appearance: base-select;
+    appearance: base-select;
+}
+
+select {
+    border-radius: 0;
+    align-items: center;
+
+    &:hover {
+        background-color: inherit;
+    }
+
+    &::picker-icon {
+        color: var(--foreground-70);
+    }
+
+    &:open {
+        &::picker-icon {
+            color: var(--foreground-90);
+            rotate: 180deg;
+        }
+    }
+}
+
+::picker {
+    border: var(--foreground-60);
+}
+
+option {
+    padding: 2px 12px;
+    height: 24px;
+    box-sizing: border-box;
+
+    &::checkmark {
+        order: 1;
+        margin-left: auto;
+    }
+
+    &:hover {
+        background-color: var(--background-80);
+    }
+}
+
+button {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 24px;
+    border: 1px solid var(--background-50);
+    background-color: var(--background-90);
+    padding: 2px 12px;
+    box-shadow: inset 0 0 0 2px var(--background-90);
+    box-sizing: border-box;
+
+    &:hover {
+        background-color: var(--background-80);
+        border: 1px solid var(--foreground-60);
+    }
+
+    &:active {
+        background-color: var(--background-70);
+    }
+}
+
+code, .digit {
+    font-family: Inconsolata, Consolas, monospace;
+    user-select: all;
+}
+
+table {
+    border-spacing: 0px;
+
+    .tag-id, .tag-name {
+        display: inline-block;
+        height: 24px;
+        padding: 2px 12px;
+        box-sizing: border-box;
+        align-content: center;
+    }
+
+    .tag-id { width: 80px; }
+    .tag-name { width: 180px; }
+    .tag-type { width: 180px; }
+    .tag-value, td.tag-value-cell { width: 100%; }
+
+    .add-entry-btn, .add-ifd-btn { width: 100%; }
+
+    tr, td {
+        padding: 0;
+        margin: 0;
+    }
+
+    tr {
+        height: 24px;
+    }
+
+    td {
+        padding: 2px;
+    }
+
+    > tbody {
+        > tr.ifd-header {
+            background-color: var(--background-80);
+        }
+    }
+}
+
+body {
+    margin: 0;
+    width: 100dvw;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background-color: var(--background-80);
+    min-height: 32px;
+    max-height: 32px;
+    border-bottom: 1px solid var(--background-50);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 4px;
+    gap: 4px;
+    box-sizing: border-box;
+
+    > span.title {
+        padding: 0 8px;
+    }
+}
+
+div#split-pane {
+    display: flex;
+    flex-direction: row;
+    padding: 4px;
+    box-sizing: border-box;
+    gap: 4px;
+    flex-grow: 1;
+    overflow: hidden;
+
+    > div {
+        border: 1px solid var(--background-50);
+        display: flex;
+        flex-direction: column;
+
+        > .view {
+            flex-grow: 1;
+            overflow: auto;
+        }
+    }
+
+    > #ifds { flex: 3 3 50%; }
+    > #preview { flex: 2 2 30%; }
+
+    @media screen and (max-width: 800px) {
+        flex-direction: column;
+    }
+}
