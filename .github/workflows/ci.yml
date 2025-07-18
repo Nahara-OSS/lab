@@ -1,0 +1,28 @@
+name: Continuous integration (CI)
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: denoland/setup-deno@v2
+      with:
+        deno-version: v2.x
+    - name: Build pages
+      run: deno --allow-read --allow-write --allow-run=deno build.ts
+    - uses: actions/upload-artifact@v4
+      with:
+        name: artifact
+        path: output/
+        if-no-files-found: error
