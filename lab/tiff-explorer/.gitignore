@@ -1,0 +1,5 @@
+# Ignore RAW image formats as they will be used as samples for local testing.
+*.tif
+*.tiff
+*.dng
+*.nef
