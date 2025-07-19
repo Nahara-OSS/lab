@@ -1,35 +1,257 @@
 [
-    { "tag": 254, "name": "NewSubfileType" },
+    {
+        "tag": 254,
+        "name": "NewSubfileType",
+        "hints": [
+            {
+                "dtype": "long",
+                "count": 1,
+                "vtype": "flags",
+                "flags": [
+                    { "index": 0, "name": "ReducedResolution" },
+                    { "index": 1, "name": "SinglePage" },
+                    { "index": 2, "name": "TransparencyMask" }
+                ]
+            }
+        ]
+    },
     { "tag": 255, "name": "SubfileType" },
     { "tag": 256, "name": "ImageWidth" },
     { "tag": 257, "name": "ImageLength" },
     { "tag": 258, "name": "BitsPerSample" },
     { "tag": 259, "name": "Compression" },
-    { "tag": 262, "name": "PhotometricInterpretation" },
+    {
+        "tag": 262,
+        "name": "PhotometricInterpretation",
+        "hints": [
+            {
+                "dtype": "short",
+                "count": 1,
+                "vtype": "indexed",
+                "entries": [
+                    { "index": 0, "name": "WhiteIsZero" },
+                    { "index": 1, "name": "BlackIsZero" },
+                    { "index": 2, "name": "RGB" },
+                    { "index": 3, "name": "PaletteColor" },
+                    { "index": 4, "name": "TransparencyMask" },
+                    { "index": 6, "name": "YCbCr" },
+                    { "index": 32803, "name": "DNG/ColorFilterArray" },
+                    { "index": 34892, "name": "DNG/LinearRaw" }
+                ]
+            }
+        ]
+    },
+    { "tag": 263, "name": "Thresholding" },
     { "tag": 264, "name": "CellWidth" },
     { "tag": 265, "name": "CellLength" },
     { "tag": 266, "name": "FillOrder" },
+    { "tag": 269, "name": "DocumentName" },
     { "tag": 270, "name": "ImageDescription" },
     { "tag": 271, "name": "Make" },
     { "tag": 272, "name": "Model" },
     { "tag": 273, "name": "StripOffsets" },
-    { "tag": 274, "name": "Orientation" },
+    {
+        "tag": 274,
+        "name": "Orientation",
+        "hints": [
+            {
+                "dtype": "short",
+                "count": 1,
+                "vtype": "indexed",
+                "entries": [
+                    { "index": 1, "name": "TopLeft" },
+                    { "index": 2, "name": "TopRight" },
+                    { "index": 3, "name": "BottomRight" },
+                    { "index": 4, "name": "BottomLeft" },
+                    { "index": 5, "name": "LeftTop" },
+                    { "index": 6, "name": "RightTop" },
+                    { "index": 7, "name": "RightBottom" },
+                    { "index": 8, "name": "LeftBottom" }
+                ]
+            }
+        ]
+    },
     { "tag": 277, "name": "SamplesPerPixel" },
-    { "tag": 278, "name": "RowsPerStrip" },
+    {
+        "tag": 278,
+        "name": "RowsPerStrip",
+        "hints": [
+            { "dtype": "short", "count": 1, "vtype": "value" },
+            { "dtype": "long", "count": 1, "vtype": "value" }
+        ]
+    },
     { "tag": 279, "name": "StripByteCounts" },
+    { "tag": 280, "name": "MinSampleValue" },
+    { "tag": 281, "name": "MaxSampleValue" },
     { "tag": 282, "name": "XResolution" },
     { "tag": 283, "name": "YResolution" },
-    { "tag": 284, "name": "PlanarConfiguration" },
+    {
+        "tag": 284,
+        "name": "PlanarConfiguration",
+        "hints": [
+            {
+                "dtype": "short",
+                "count": 1,
+                "vtype": "indexed",
+                "entries": [
+                    { "index": 1, "name": "Chunky" },
+                    { "index": 2, "name": "Planar" }
+                ]
+            }
+        ]
+    },
+    { "tag": 285, "name": "PageName" },
+    { "tag": 286, "name": "XPosition" },
+    { "tag": 287, "name": "YPosition" },
     { "tag": 288, "name": "FreeOffset" },
     { "tag": 289, "name": "FreeByteCounts" },
     { "tag": 290, "name": "GrayResponseUnit" },
     { "tag": 291, "name": "GrayResponseCurve" },
-    { "tag": 296, "name": "ResolutionUnit" },
+    { "tag": 292, "name": "T4Options" },
+    { "tag": 293, "name": "T6Options" },
+    {
+        "tag": 296,
+        "name": "ResolutionUnit",
+        "hints": [
+            {
+                "dtype": "short",
+                "count": 1,
+                "vtype": "indexed",
+                "entries": [
+                    { "index": 1, "name": "None" },
+                    { "index": 2, "name": "Inch" },
+                    { "index": 3, "name": "Centimeter" }
+                ]
+            }
+        ]
+    },
+    { "tag": 297, "name": "PageNumber" },
+    { "tag": 301, "name": "TransferFunction" },
     { "tag": 305, "name": "Software" },
     { "tag": 306, "name": "DateTime" },
     { "tag": 315, "name": "Artist" },
     { "tag": 316, "name": "HostComputer" },
+    { "tag": 317, "name": "Predictor" },
+    { "tag": 318, "name": "WhitePoint" },
+    { "tag": 319, "name": "PrimaryChromaticities" },
     { "tag": 320, "name": "ColorMap" },
+    { "tag": 321, "name": "HalftoneHints" },
+    { "tag": 322, "name": "TileWidth" },
+    { "tag": 323, "name": "TileLength" },
+    { "tag": 324, "name": "TileOffsets" },
+    { "tag": 325, "name": "TileByteCounts" },
+    { "tag": 326, "name": "BadFaxLines" },
+    { "tag": 327, "name": "CleanFaxData" },
+    { "tag": 328, "name": "ConsecutiveBadFaxLines" },
+    { "tag": 330, "name": "SubIFDs" },
+    { "tag": 332, "name": "InkSet" },
+    { "tag": 333, "name": "InkNames" },
+    { "tag": 334, "name": "NumberOfInks" },
+    { "tag": 336, "name": "DotRange" },
+    { "tag": 337, "name": "TargetPrinter" },
     { "tag": 338, "name": "ExtraSamples" },
-    { "tag": 33432, "name": "Copyright" }
+    { "tag": 339, "name": "SampleFormat" },
+    { "tag": 340, "name": "SMinSampleValue" },
+    { "tag": 341, "name": "SMaxSampleValue" },
+    { "tag": 342, "name": "TransferRange" },
+    { "tag": 343, "name": "ClipPath" },
+    { "tag": 344, "name": "XClipPathUnits" },
+    { "tag": 345, "name": "YClipPathUnits" },
+    { "tag": 346, "name": "Indexed" },
+    { "tag": 347, "name": "JPEGTables" },
+    { "tag": 351, "name": "OPIProxy" },
+    { "tag": 400, "name": "GlobalParametersIFD" },
+    { "tag": 401, "name": "ProfileType" },
+    { "tag": 402, "name": "FaxProfile" },
+    { "tag": 403, "name": "CodingMethods" },
+    { "tag": 404, "name": "VersionYear" },
+    { "tag": 405, "name": "ModeNumber" },
+    { "tag": 433, "name": "Decode" },
+    { "tag": 434, "name": "DefaultImageColor" },
+    { "tag": 512, "name": "JPECProc" },
+    { "tag": 513, "name": "JPEGInterchangeFormat" },
+    { "tag": 514, "name": "JPEGInterchangeFormatLength" },
+    { "tag": 515, "name": "JPEGRestartInterval" },
+    { "tag": 517, "name": "JPEGLosslessPredictors" },
+    { "tag": 518, "name": "JPEGPointTransforms" },
+    { "tag": 519, "name": "JPEGQTables" },
+    { "tag": 520, "name": "JPEGDCTables" },
+    { "tag": 521, "name": "JPEGACTables" },
+    { "tag": 529, "name": "YCbCrCoefficients" },
+    { "tag": 530, "name": "YCbCrSubSampling" },
+    { "tag": 531, "name": "YCbCrPositioning" },
+    { "tag": 532, "name": "ReferenceBlackWhite" },
+    { "tag": 559, "name": "StripRowCounts" },
+    { "tag": 700, "name": "XMP" },
+    { "tag": 33432, "name": "Copyright" },
+    { "tag": 34665, "name": "ExifIFD" },
+    { "tag": 34853, "name": "GPSInfoIFD" },
+    { "tag": 36867, "name": "DateTimeOriginal" },
+    { "tag": 37398, "name": "TIFFEPStandardID" },
+    {
+        "tag": 50706,
+        "name": "DNG/Version",
+        "hints": [{ "dtype": "byte", "count": 4, "vtype": "value" }]
+    },
+    {
+        "tag": 50707,
+        "name": "DNG/BackwardVersion",
+        "hints": [{ "dtype": "byte", "count": 4, "vtype": "value" }]
+    },
+    {
+        "tag": 50708,
+        "name": "DNG/UniqueCameraModel",
+        "hints": [{ "dtype": "ascii", "count": -1, "vtype": "value" }]
+    },
+    {
+        "tag": 50709,
+        "name": "DNG/LocalizedCameraModel",
+        "hints": [{ "dtype": "ascii", "count": -1, "vtype": "value" }]
+    },
+    {
+        "tag": 50710,
+        "name": "DNG/CFAPlaneColor",
+        "hints": [{ "dtype": "byte", "count": -1, "vtype": "value" }]
+    },
+    {
+        "tag": 50711,
+        "name": "DNG/CFALayout",
+        "hints": [
+            {
+                "dtype": "short",
+                "count": 1,
+                "vtype": "indexed",
+                "entries": [
+                    { "index": 1, "name": "Rectangular" },
+                    { "index": 2, "name": "StaggeredA" },
+                    { "index": 3, "name": "StaggeredB" },
+                    { "index": 4, "name": "StaggeredC" },
+                    { "index": 5, "name": "StaggeredD" },
+                    { "index": 6, "name": "StaggeredE" },
+                    { "index": 7, "name": "StaggeredF" },
+                    { "index": 8, "name": "StaggeredG" },
+                    { "index": 9, "name": "StaggeredH" }
+                ]
+            }
+        ]
+    },
+    {
+        "tag": 50712,
+        "name": "DNG/LinearizationTable",
+        "hints": [{ "dtype": "short", "count": -1, "vtype": "value" }]
+    },
+    {
+        "tag": 50713,
+        "name": "DNG/BlackLevelRepeatDim",
+        "hints": [{ "dtype": "short", "count": 2, "vtype": "value" }]
+    },
+    {
+        "tag": 50714,
+        "name": "DNG/BlackLevel",
+        "hints": [
+            { "dtype": "short", "count": -1, "vtype": "value" },
+            { "dtype": "long", "count": -1, "vtype": "value" },
+            { "dtype": "rational", "count": -1, "vtype": "value" }
+        ]
+    }
 ]
