@@ -193,7 +193,7 @@ export const valueTypes: { [x in Type]: ValueType<x> | ConvertibleValueType<x> }
             for (let i = 0; i < count; i++) {
                 out[i] = {
                     numerator: view.getInt32(i << 3, endianness == Endianness.Little),
-                    denominator: view.getInt32(i << 3 + 4, endianness == Endianness.Little),
+                    denominator: view.getInt32((i << 3) + 4, endianness == Endianness.Little),
                 };
             }
 
