@@ -1,0 +1,33 @@
+:host {
+    display: block;
+    width: 500px;
+    height: 300px;
+}
+
+.wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    
+    > .node-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        cursor: grab;
+        background-image: radial-gradient(#efefef 1px, transparent 1px);
+        background-size: 8px 8px;
+        background-repeat: repeat;
+
+        &:active {
+            cursor: grabbing;
+        }
+
+        > .node {
+            position: absolute;
+            cursor: initial;
+        }
+    }
+}

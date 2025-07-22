@@ -1,0 +1,16 @@
+* {
+    font-family: Inter, Segoe UI, Arial, sans-serif;
+    font-size: 12px;
+}
+
+body {
+    margin: 0;
+    width: 100dvw;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+nahara-network-view {
+    width: 100%;
+    height: 100%;
+}

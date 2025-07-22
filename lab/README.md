@@ -25,6 +25,7 @@ Tags are used by search box for searching experiments that could be related to k
 
 ### Area namespace (`area/`)
 - `area/animation`: This experiment is designed around animating.
+- `area/core`: This experiment is designed for general purpose.
 - `area/raster`: This experiment is designed for raster graphics.
 - `area/vector`: This experiment is designed for vector graphics.
 
