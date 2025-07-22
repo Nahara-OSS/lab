@@ -292,7 +292,7 @@ class SocketInternals implements Socket {
 
         const src = this.direction == "in" ? socket : this;
         const dst = this.direction == "in" ? this : socket;
-        if (dst.maxInputs >= dst.targets.size) throw new Error(`Socket ${dst.id} reached maximum number of inputs`);
+        if (dst.targets.size >= dst.maxInputs) throw new Error(`Socket ${dst.id} reached maximum number of inputs`);
 
         this.targets.add(socket);
         socket.targets.add(this);
