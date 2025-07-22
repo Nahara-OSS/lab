@@ -1,7 +1,7 @@
 import type { Network } from "../network.ts";
 import type { Node } from "../node.ts";
 import css from "./network-view.css" with { type: "text" };
-import type { NodeViewElement } from "./node-view.ts";
+import { NodeViewElement } from "./node-view.ts";
 
 const stylesheet = await new CSSStyleSheet().replace(css);
 
@@ -109,7 +109,11 @@ export class NetworkViewElement extends HTMLElement {
 
     #addNode(node: Node): void {
         if (this.#nodes.has(node)) return;
-        const nodeView = document.createElement("nahara-node-view");
+
+        const nodeViewId = customElements.getName(NodeViewElement);
+        if (nodeViewId == null) throw new Error(`NodeViewElement is not registered to customElements`);
+
+        const nodeView = document.createElement(nodeViewId) as NodeViewElement;
         nodeView.classList.add("node");
         nodeView.node = node;
         this.#nodes.set(node, nodeView);
