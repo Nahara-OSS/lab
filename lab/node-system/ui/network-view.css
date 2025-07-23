@@ -20,6 +20,8 @@
         background-image: radial-gradient(#efefef 1px, transparent 1px);
         background-size: 8px 8px;
         background-repeat: repeat;
+        touch-action: none;
+        overscroll-behavior: none;
 
         &:active {
             cursor: grabbing;

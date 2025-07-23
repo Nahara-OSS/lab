@@ -13,6 +13,7 @@
     align-content: center;
     user-select: none;
     cursor: grab;
+    touch-action: none;
 
     &:active {
         cursor: grabbing;
