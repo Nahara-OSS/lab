@@ -315,6 +315,10 @@ class SocketInternals implements Socket {
         if (this.direction == socket.direction) return false;
         if (this.targets.has(socket)) return false;
         // TODO: detect circular connection
+
+        const dst = this.direction == "in" ? this : socket;
+        if (dst.targets.size >= dst.maxInputs) return false;
+
         return true;
     }
 

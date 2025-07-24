@@ -1,53 +1,47 @@
+import { FragmentTarget, MergeVec2f, MergeVec4f, SplitVec2f, SplitVec4f, VertexInput } from "./demo/nodes.ts";
+import { buildFragmentShader, buildPipeline } from "./demo/wgsl.ts";
 import "./index.css";
-import { Network, Node, type NodeCreateOptions, type Socket } from "./mod.ts";
+import { Network } from "./mod.ts";
 import "./ui/preload.ts";
 
-class SplitRgbaNode extends Node {
-    readonly rgba: Socket;
-    readonly r: Socket;
-    readonly g: Socket;
-    readonly b: Socket;
-    readonly a: Socket;
+const adapter = await navigator.gpu.requestAdapter();
+const device = await adapter?.requestDevice()!;
 
-    constructor(options: NodeCreateOptions) {
-        super(options);
-        this.rgba = this.addSocket({ id: "input", direction: "in", type: "color", name: "Color" });
-        this.r = this.addSocket({ id: "r", direction: "out", type: "float", name: "Red" });
-        this.g = this.addSocket({ id: "g", direction: "out", type: "float", name: "Green" });
-        this.b = this.addSocket({ id: "b", direction: "out", type: "float", name: "Blue" });
-        this.a = this.addSocket({ id: "a", direction: "out", type: "float", name: "Alpha" });
-    }
-}
-
-class PulseGeneratorNode extends Node {
-    readonly pulseOut: Socket;
-
-    constructor(options: NodeCreateOptions) {
-        super(options);
-        this.pulseOut = this.addSocket({ id: "pulseOut", direction: "out", type: "pulse", name: "Pulse Out" });
-    }
-}
-
-class PulseReceiverNode extends Node {
-    readonly pulseIn: Socket;
-
-    constructor(options: NodeCreateOptions) {
-        super(options);
-        this.pulseIn = this.addSocket({ id: "pulseIn", direction: "in", type: "pulse", name: "Pulse In" });
-    }
-}
+const canvas = document.createElement("canvas");
+const surface = canvas.getContext("webgpu")!;
+surface.configure({ device, format: "rgba8unorm" });
 
 const view = document.createElement("nahara-network-view");
-document.body.append(view);
+const runBtn = document.createElement("button");
+runBtn.textContent = "Run";
+document.body.append(canvas, view, runBtn);
 
 const network = new Network();
-const generator = new PulseGeneratorNode({ name: "Pulse Generator", x: 0, y: 240 });
-const receiver = new PulseReceiverNode({ name: "Pulse Receiver", x: 8 * 30, y: 240 });
-
-network.addNode(new SplitRgbaNode({ name: "Split RGBA", x: 0, y: 0 }));
-network.addNode(generator);
-network.addNode(receiver);
-console.log(network);
-
 view.network = network;
-generator.pulseOut.connect(receiver.pulseIn);
+
+network.addNode(new VertexInput({ name: "Vertex Input", x: 240 * 0 }));
+network.addNode(new SplitVec4f({ name: "Split 4D Vector", x: 240 * 1 }));
+network.addNode(new MergeVec4f({ name: "Merge 4D Vector", x: 240 * 2 }));
+network.addNode(new SplitVec2f({ name: "Split 2D Vector", x: 240 * 3 }));
+network.addNode(new MergeVec2f({ name: "Merge 2D Vector", x: 240 * 4 }));
+network.addNode(new FragmentTarget({ name: "Fragment Target", x: 240 * 5 }));
+
+runBtn.addEventListener("click", () => {
+    const pipeline = buildPipeline(device, network);
+
+    const commandEncoder = device.createCommandEncoder();
+    const renderPass = commandEncoder.beginRenderPass({
+        colorAttachments: [
+            {
+                loadOp: "clear",
+                storeOp: "store",
+                view: surface.getCurrentTexture().createView(),
+                clearValue: [0, 0, 0, 1],
+            },
+        ],
+    });
+    renderPass.setPipeline(pipeline);
+    renderPass.draw(4);
+    renderPass.end();
+    device.queue.submit([commandEncoder.finish()]);
+});

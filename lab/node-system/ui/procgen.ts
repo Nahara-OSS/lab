@@ -1,7 +1,15 @@
 export function procgenColor(name: string): string {
-    let v = 31;
-    for (let i = 0; i < name.length; i++) v = name.charCodeAt(i) * 7 + ((v << 4) - v);
+    let hash = 0;
 
-    const hue = (v & 0xFFFF) * 360 / 0xFFFF;
-    return `oklch(0.9 0.1 ${hue})`;
+    for (let i = 0; i < name.length; i++) {
+        let base = name.charCodeAt(i);
+
+        for (let j = 0; j < 10; j++) {
+            base = (base << 5) - base;
+        }
+
+        hash = base ^ (hash << 7);
+    }
+
+    return `oklch(0.9 0.1 ${((hash & 0xFFFF) * 360 / 0xFFFF)})`;
 }

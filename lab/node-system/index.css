@@ -10,7 +10,24 @@ body {
     overflow: hidden;
 }
 
-nahara-network-view {
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
+}
+
+nahara-network-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+button {
+    position: absolute;
+    top: 16px;
+    left: 16px;
 }
