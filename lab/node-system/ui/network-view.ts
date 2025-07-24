@@ -29,7 +29,7 @@ export class NetworkViewElement extends HTMLElement {
     #connectingTo: Socket | null = null;
 
     #onNetworkAddNode = (e: CustomEvent<Node>) => this.#addNode(e.detail);
-    #onNetworkRemoveNode = (e: CustomEvent<Node>) => this.#addNode(e.detail);
+    #onNetworkRemoveNode = (e: CustomEvent<Node>) => this.#removeNode(e.detail);
     #onNodeUpdate = (e: CustomEvent<Node>) => this.#updateNode(e.detail);
     #onNodeConnect = (e: NodeConnectionEvent) => e.target == e.src.node ? this.#addWire(e.src, e.dst) : void 0;
     #onNodeDisconnect = (e: NodeConnectionEvent) => e.target == e.src.node ? this.#removeWire(e.src, e.dst) : void 0;
@@ -106,8 +106,8 @@ export class NetworkViewElement extends HTMLElement {
     #networkAttach(network: Network) {
         for (const node of network.nodes) this.#addNode(node);
 
-        network.removeEventListener("addnode", this.#onNetworkAddNode);
-        network.removeEventListener("removenode", this.#onNetworkRemoveNode);
+        network.addEventListener("addnode", this.#onNetworkAddNode);
+        network.addEventListener("removenode", this.#onNetworkRemoveNode);
     }
 
     #networkDetach(network: Network) {
