@@ -16,7 +16,7 @@ In order to consider this experiment a success, all required goals must be achie
 ### Required goals
 - [ ] Editor UI works in Chromium/Firefox
 - [ ] Usable in following environments: Chromium/Firefox and Deno
-- [ ] Dynamically add and remove sockets
+- [x] Dynamically add and remove sockets
 - [ ] Custom UI on nodes
 - [ ] Grouping nodes with sockets exporting
 - [ ] Framing nodes for organization
@@ -25,6 +25,9 @@ In order to consider this experiment a success, all required goals must be achie
 ### Optional goals
 - [ ] Usable in following environments: Node and Bun
 - [ ] Programmatically edit the node network
+
+## Demo
+The following demo converts node network into WebGPU Shading Language and build render pipeline from it.
 
 ## Notes
 ### Editing node programmatically
