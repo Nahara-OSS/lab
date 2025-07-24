@@ -112,6 +112,27 @@ export class NodeViewElement extends HTMLElement {
         socketDiv.append(document.createTextNode(socket.name ?? socket.id), createTypeIndicator(socket.type));
         this.#shadow.append(socketDiv);
         this.#socketDivs.set(socket, socketDiv);
+
+        socketDiv.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            this.dispatchEvent(new SocketPointerEvent("socketdown", socket, e));
+        });
+
+        socketDiv.addEventListener("pointerup", (e) => {
+            // TODO: figure out how to handle touch going outside the bounds
+            e.preventDefault();
+            this.dispatchEvent(new SocketPointerEvent("socketup", socket, e));
+        });
+
+        socketDiv.addEventListener("pointerenter", (e) => {
+            e.preventDefault();
+            this.dispatchEvent(new SocketPointerEvent("socketenter", socket, e));
+        });
+
+        socketDiv.addEventListener("pointerleave", (e) => {
+            e.preventDefault();
+            this.dispatchEvent(new SocketPointerEvent("socketleave", socket, e));
+        });
     }
 
     #onRemoveSocket(socket: Socket): void {
@@ -127,4 +148,40 @@ function createTypeIndicator(type: string): HTMLDivElement {
     div.part.add("type-indicator");
     div.part.add(type);
     return div;
+}
+
+export interface NodeViewElement {
+    addEventListener<K extends keyof NodeViewElementEventMap>(
+        type: K,
+        callback: (this: Node, e: NodeViewElementEventMap[K]) => unknown,
+        options?: AddEventListenerOptions | boolean,
+    ): void;
+    addEventListener(
+        type: string,
+        callback: EventListenerOrEventListenerObject | null,
+        options?: AddEventListenerOptions | boolean,
+    ): void;
+    removeEventListener<K extends keyof NodeViewElementEventMap>(
+        type: K,
+        callback: (this: Node, e: NodeViewElementEventMap[K]) => unknown,
+        options?: EventListenerOptions | boolean,
+    ): void;
+    removeEventListener(
+        type: string,
+        callback: EventListenerOrEventListenerObject | null,
+        options?: EventListenerOptions | boolean,
+    ): void;
+}
+
+export interface NodeViewElementEventMap extends HTMLElementEventMap {
+    "socketdown": SocketPointerEvent;
+    "socketenter": SocketPointerEvent;
+    "socketleave": SocketPointerEvent;
+    "socketup": SocketPointerEvent;
+}
+
+export class SocketPointerEvent extends Event {
+    constructor(type: string, public readonly socket: Socket, public readonly parent: PointerEvent) {
+        super(type);
+    }
 }

@@ -28,9 +28,16 @@
             cursor: initial;
             fill: transparent;
             stroke-width: 12;
+            stroke-linecap: round;
 
             &:hover {
                 stroke: #ff0000;
+            }
+
+            &.connecting {
+                stroke: unset;
+                stroke-dasharray: 10 20;
+                opacity: 0.5;
             }
         }
 
@@ -45,7 +52,6 @@
         left: 0;
         width: 0;
         height: 0;
-
 
         > .node {
             position: absolute;

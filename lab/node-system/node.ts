@@ -263,6 +263,7 @@ export interface Socket extends Readonly<SocketInfo> {
     readonly targets: ReadonlySet<Socket>;
 
     connect(socket: Socket): void;
+    canConnectTo(socket: Socket): boolean;
     disconnect(socket: Socket): void;
     disconnectAll(): void;
 }
@@ -294,11 +295,7 @@ class SocketInternals implements Socket {
 
     connect(socket: Socket): void {
         if (!(socket instanceof SocketInternals)) throw new Error(`Invalid socket implementation`);
-        if (socket == this) throw new Error(`Cannot connect the socket to itself`);
-        if (this.type != socket.type) throw new Error(`Type mismatch: ${this.type} connecting to ${socket.type}`);
-        if (this.direction == socket.direction) throw new Error(`Direction match: ${this.direction}`);
-        if (this.targets.has(socket)) return;
-        // TODO: throw on circular connection
+        if (!this.canConnectTo(socket)) throw new Error(`Attempt to connect ${this.id} to ${socket.id}`);
 
         const src = this.direction == "in" ? socket : this;
         const dst = this.direction == "in" ? this : socket;
@@ -309,6 +306,16 @@ class SocketInternals implements Socket {
 
         this.node.dispatchEvent(new NodeConnectionEvent("connect", src, dst));
         socket.node.dispatchEvent(new NodeConnectionEvent("connect", src, dst));
+    }
+
+    canConnectTo(socket: Socket): boolean {
+        if (!(socket instanceof SocketInternals)) return false;
+        if (socket == this) return false;
+        if (this.type != socket.type) return false;
+        if (this.direction == socket.direction) return false;
+        if (this.targets.has(socket)) return false;
+        // TODO: detect circular connection
+        return true;
     }
 
     disconnect(socket: Socket): void {

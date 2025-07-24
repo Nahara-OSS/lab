@@ -24,6 +24,10 @@ export class NetworkViewElement extends HTMLElement {
     #panX = 0;
     #panY = 0;
 
+    #connecting: SVGPathElement | null = null;
+    #connectingFrom: Socket | null = null;
+    #connectingTo: Socket | null = null;
+
     #onNetworkAddNode = (e: CustomEvent<Node>) => this.#addNode(e.detail);
     #onNetworkRemoveNode = (e: CustomEvent<Node>) => this.#addNode(e.detail);
     #onNodeUpdate = (e: CustomEvent<Node>) => this.#updateNode(e.detail);
@@ -139,6 +143,53 @@ export class NetworkViewElement extends HTMLElement {
         node.addEventListener("update", this.#onNodeUpdate);
         node.addEventListener("connect", this.#onNodeConnect);
         node.addEventListener("disconnect", this.#onNodeDisconnect);
+
+        nodeView.addEventListener("socketdown", (e) => {
+            if (this.#connectingFrom != null) return;
+            this.#connectingFrom = e.socket;
+            this.#updateConnectingWire(e.parent);
+
+            const pointerMove = (e: PointerEvent): void => {
+                this.#updateConnectingWire(e);
+            };
+
+            const pointerUp = (e: PointerEvent) => {
+                if (this.#connectingFrom != null) {
+                    // TODO: Open node picker menu when connecting to air
+                    this.#connectingFrom = null;
+                    this.#updateConnectingWire(e);
+                }
+
+                document.removeEventListener("pointermove", pointerMove);
+                document.removeEventListener("pointerup", pointerUp);
+            };
+
+            document.addEventListener("pointermove", pointerMove);
+            document.addEventListener("pointerup", pointerUp);
+        });
+
+        nodeView.addEventListener("socketenter", (e) => {
+            if (this.#connectingFrom == null) return;
+            if (!this.#connectingFrom.canConnectTo(e.socket)) return;
+            this.#connectingTo = e.socket;
+            this.#updateConnectingWire(e.parent);
+        });
+
+        nodeView.addEventListener("socketleave", (e) => {
+            if (this.#connectingFrom == null) return;
+            if (this.#connectingTo != e.socket) return;
+            this.#connectingTo = null;
+            this.#updateConnectingWire(e.parent);
+        });
+
+        nodeView.addEventListener("socketup", (e) => {
+            if (this.#connectingFrom == null) return;
+            if (!this.#connectingFrom.canConnectTo(e.socket)) return;
+            this.#connectingFrom.connect(e.socket);
+            this.#connectingFrom = null;
+            this.#connectingTo = null;
+            this.#updateConnectingWire(e.parent);
+        });
     }
 
     #removeNode(node: Node): void {
@@ -217,5 +268,31 @@ export class NetworkViewElement extends HTMLElement {
             this.#panX + nx + sideX,
             this.#panY + ny + 44 + socket.position * 24,
         ];
+    }
+
+    #updateConnectingWire(e: PointerEvent): void {
+        if (this.#connectingFrom == null) {
+            this.#connecting?.remove();
+            this.#connecting = null;
+            return;
+        }
+
+        if (this.#connecting == null) {
+            this.#connecting = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            this.#connecting.classList.add("wire");
+            this.#connecting.classList.add("connecting");
+            this.#connecting.style.stroke = procgenColor(this.#connectingFrom.type); // !override
+            this.#wireContainerSvg.append(this.#connecting);
+        }
+
+        const { left, top } = this.#wireContainerSvg.getBoundingClientRect();
+        const [sx, sy] = this.#socketPositionOf(this.#connectingFrom);
+        const [dx, dy] = this.#connectingTo != null
+            ? this.#socketPositionOf(this.#connectingTo)
+            : [e.clientX - left, e.clientY - top];
+        const diff = Math.abs(dx - sx);
+        const acpx = this.#connectingFrom.direction == "in" ? -diff / 2 : diff / 2;
+        const bcpx = this.#connectingFrom.direction == "in" ? diff / 2 : -diff / 2;
+        this.#connecting.setAttribute("d", `M ${sx},${sy} C ${sx + acpx},${sy},${dx + bcpx},${dy},${dx},${dy}`);
     }
 }
