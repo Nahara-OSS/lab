@@ -6,6 +6,8 @@ tags: [area/core]
 ---
 
 # Node system
+![Thumbnail](./thumb.png)
+
 ## About this experiment
 Introduce a node system with real-time capability, as well as Web Component for editing nodes. The node system will be
 adapted for all kind of apps, which means it should be generalized.
