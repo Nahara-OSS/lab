@@ -1,19 +1,3 @@
-/*
-
-ok, here's how one can make a node:
-
-- first add the sockets. they doesn't have to follow a certain order, just keep adding sockets
-- then add node part, which can be used to reorder sockets or even provide UI
-  + regular node part display socket information normally
-  + custom node part allows node author to add custom control UI that optionally belongs to group of sockets
-  + all node parts must have minimum height. each socket adds 24px of height to the part
-    + this will be used for calculating the node's bounds for culling off-screen nodes
-  + part collection allows one to add collapsable section on the node
-- sockets that aren't belong to any node part will belong to default part, which will be placed on top of the node for
-visiblity.
-
-*/
-
 /**
  * A node consists of input and output sockets. This node class is typically extended to add default sockets.
  *
@@ -46,9 +30,12 @@ visiblity.
  *
  * - `update`: Emit when properties of a node is changed, such as node name, size or position.
  * - `addsocket`: Emit when a new socket is added to this node (by calling {@link Node.addSocket}). Listeners use this
- * to update the UI accordingly.
+ * to update the UI accordingly. The new socket will be added to default part.
  * - `removesocket`: Emit when an existing socket is about to be removed from this node (by calling
  * {@link Node.deleteSocket}). Listeners use this to update the UI accordingly.
+ * - `transfersocket`: Emit when the socket is being transferred from one part to another.
+ * - `addpart`: Emit when a new part is about to be added.
+ * - `removepart`: Emit when an existing part is about to be removed.
  * - `connect`: Emit when a new pair of sockets has been connected. This will emit for both source and destination
  * nodes.
  * - `disconnect`: Emit when an existing pair of sockets has been disconnected. This will emit for both source and
@@ -56,6 +43,8 @@ visiblity.
  */
 export class Node extends EventTarget {
     #sockets = new Map<string, SocketInternals>();
+    #defaultPart = new NodePartInternals(this);
+    #parts: NodePart[] = [this.#defaultPart];
     #name: string;
     #expanded: boolean;
     #x: number;
@@ -76,6 +65,14 @@ export class Node extends EventTarget {
      */
     get sockets(): ReadonlyMap<string, Socket> {
         return this.#sockets;
+    }
+
+    get parts(): readonly NodePart[] {
+        return this.#parts;
+    }
+
+    get defaultPart(): NodePart {
+        return this.#defaultPart;
     }
 
     /**
@@ -136,7 +133,8 @@ export class Node extends EventTarget {
 
     addSocket(info: Readonly<SocketInfo>): Socket {
         if (this.#sockets.has(info.id)) throw new Error(`Socket with ID ${info.id} already existed on this node`);
-        const socket = new SocketInternals(this, info);
+        const socket = new SocketInternals(this, this.#defaultPart, info);
+        this.#defaultPart.sockets.push(socket);
 
         this.#sockets.set(socket.id, socket);
         this.dispatchEvent(new CustomEvent("addsocket", { detail: socket }));
@@ -149,7 +147,32 @@ export class Node extends EventTarget {
 
         socket.disconnectAll();
         this.dispatchEvent(new CustomEvent("removesocket", { detail: socket }));
+
+        if (socket.part != this.#defaultPart) {
+            socket.part.delete(socket);
+        } else {
+            const idx = this.#defaultPart.sockets.indexOf(socket);
+            if (idx != -1) this.#defaultPart.sockets.splice(idx, 1);
+        }
+
         this.#sockets.delete(socket.id);
+    }
+
+    addPart(info: NodePartInfo = {}): NodePart {
+        const part = new NodePartInternals(this, info);
+        this.#parts.push(part);
+        this.dispatchEvent(new CustomEvent("addpart", { detail: part }));
+        return part;
+    }
+
+    deletePart(part: NodePart): void {
+        if (part == this.#defaultPart) throw new Error("Cannot delete default part");
+        const idx = this.#parts.indexOf(part);
+        if (idx == -1) return;
+
+        for (const socket of part.sockets) part.delete(socket);
+        this.dispatchEvent(new CustomEvent("removepart", { detail: part }));
+        this.#parts.splice(idx, 1);
     }
 }
 
@@ -188,12 +211,26 @@ export interface NodeEventMap {
     "update": CustomEvent<Node>;
     "addsocket": CustomEvent<Socket>;
     "removesocket": CustomEvent<Socket>;
+    "addpart": CustomEvent<NodePart>;
+    "removepart": CustomEvent<NodePart>;
+    "transfersocket": SocketTransferEvent;
     "connect": NodeConnectionEvent;
     "disconnect": NodeConnectionEvent;
 }
 
 export class NodeConnectionEvent extends Event {
     constructor(type: string, public readonly src: Socket, public readonly dst: Socket) {
+        super(type);
+    }
+}
+
+export class SocketTransferEvent extends Event {
+    constructor(
+        type: string,
+        public readonly socket: Socket,
+        public readonly from: NodePart,
+        public readonly to: NodePart,
+    ) {
         super(type);
     }
 }
@@ -242,12 +279,8 @@ export interface Socket extends Readonly<SocketInfo> {
      * The node owning this socket.
      */
     readonly node: Node;
-
-    /**
-     * The posiion of this socket inside node part. This will be used to calculate socket's coordinates when rendering
-     * the wires.
-     */
-    readonly position: number;
+    readonly part: NodePart;
+    readonly relativeY: number;
 
     readonly id: string;
     readonly type: string;
@@ -279,6 +312,7 @@ class SocketInternals implements Socket {
 
     constructor(
         public readonly node: Node,
+        public part: NodePartInternals,
         { id, type, direction, maxInputs, name, description }: SocketInfo,
     ) {
         this.id = id;
@@ -289,8 +323,15 @@ class SocketInternals implements Socket {
         this.description = description ?? null;
     }
 
-    get position(): number {
-        return [...this.node.sockets.values()].indexOf(this);
+    get relativeY(): number {
+        let accumulated = 0;
+
+        for (let i = 0; i < this.node.parts.length; i++) {
+            if (this.node.parts[i] == this.part) break;
+            accumulated += this.node.parts[i].height;
+        }
+
+        return accumulated + this.part.sockets.indexOf(this) * 24 + 12;
     }
 
     connect(socket: Socket): void {
@@ -336,5 +377,88 @@ class SocketInternals implements Socket {
 
     disconnectAll(): void {
         for (const target of [...this.targets]) this.disconnect(target);
+    }
+}
+
+export interface NodePartInfo {
+    /**
+     * Whether to enable custom control UI that sits on top of all sockets. Default is `false`.
+     */
+    readonly ui?: boolean | null;
+
+    /**
+     * The minimum height of node part, measured in CSS pixels. Default is 0 pixels.
+     */
+    readonly minHeight?: number | null;
+}
+
+/**
+ * Node part represent a group of sockets on a node, as well as UI controls that could be related to sockets.
+ */
+export interface NodePart extends NodePartInfo {
+    readonly node: Node;
+    readonly ui: boolean;
+    readonly minHeight: number;
+
+    /**
+     * The actual height of this node part.
+     */
+    readonly height: number;
+
+    /**
+     * An ordered list of sockets in this node part.
+     */
+    readonly sockets: readonly Socket[];
+
+    insert(beforeIndex: number, socket: Socket): void;
+    add(socket: Socket): void;
+    delete(socket: Socket): void;
+}
+
+class NodePartInternals implements NodePart {
+    readonly ui: boolean;
+    readonly minHeight: number;
+    sockets: SocketInternals[] = [];
+
+    constructor(
+        public readonly node: Node,
+        { ui, minHeight }: NodePartInfo = {},
+    ) {
+        this.ui = ui ?? false;
+        this.minHeight = minHeight ?? 0;
+    }
+
+    get height(): number {
+        return Math.max(this.minHeight, this.sockets.length * 24);
+    }
+
+    insert(beforeIndex: number, socket: Socket): void {
+        if (!(socket instanceof SocketInternals)) throw new Error(`Invalid socket implementation`);
+
+        const transferFrom = socket.part;
+        const idx = socket.part.sockets.indexOf(socket);
+        if (idx == -1) throw new Error(`Invalid node state`);
+        socket.part.sockets.splice(idx, 1);
+        this.sockets.splice(beforeIndex, 0, socket);
+        socket.part = this;
+        this.node.dispatchEvent(new SocketTransferEvent("transfersocket", socket, transferFrom, this));
+    }
+
+    add(socket: Socket): void {
+        if (socket.part == this) return;
+        this.insert(this.sockets.length, socket);
+    }
+
+    delete(socket: Socket): void {
+        if (!(socket instanceof SocketInternals)) throw new Error(`Invalid socket implementation`);
+        if (this == this.node.defaultPart) throw new Error(`Cannot delete socket from default part`);
+        if (socket.part != this) return;
+
+        const idx = this.sockets.indexOf(socket);
+        if (idx == -1) throw new Error(`Invalid node state`);
+        this.sockets.splice(idx, 1);
+        socket.part = this.node.defaultPart as NodePartInternals;
+        (this.node.defaultPart as NodePartInternals).sockets.push(socket);
+        this.node.dispatchEvent(new SocketTransferEvent("transfersocket", socket, this, this.node.defaultPart));
     }
 }

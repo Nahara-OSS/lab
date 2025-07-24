@@ -1,5 +1,5 @@
 import { Node } from "../mod.ts";
-import type { Socket } from "../node.ts";
+import type { NodeCreateOptions, NodePart, Socket } from "../node.ts";
 
 export abstract class ShaderNode extends Node {
     abstract generateWgslExpression(socket: Socket): string;
@@ -9,6 +9,25 @@ function wgslExprOrElse(socket: Socket, defaultValue: string): string {
     const [target] = [...socket.targets];
     if (target != null && target.node instanceof ShaderNode) return target.node.generateWgslExpression(target);
     return defaultValue;
+}
+
+export class Vec4f extends ShaderNode {
+    #uiPart = this.addPart({ ui: true, minHeight: 24 * 4 + 8 });
+
+    readonly vector: Socket = this.addSocket({ id: "vector", direction: "out", type: "vec4f", name: "Vector" });
+    valueX: number = 0;
+    valueY: number = 0;
+    valueZ: number = 0;
+    valueW: number = 0;
+
+    constructor(options: NodeCreateOptions) {
+        super(options);
+        this.#uiPart.add(this.vector);
+    }
+
+    override generateWgslExpression(): string {
+        return `vec4f(${this.valueX},  ${this.valueY}, ${this.valueZ}, ${this.valueW})`;
+    }
 }
 
 export class SplitVec4f extends ShaderNode {
@@ -100,7 +119,14 @@ export class VertexInput extends ShaderNode {
 }
 
 export class FragmentTarget extends Node {
+    readonly ui: NodePart = this.addPart({ ui: true, minHeight: 32 });
+    readonly afterUi: NodePart = this.addPart();
     readonly color: Socket = this.addSocket({ id: "color", direction: "in", type: "vec4f", name: "Color" });
+
+    constructor(options: NodeCreateOptions) {
+        super(options);
+        this.afterUi.add(this.color);
+    }
 
     toWgslExpression(): string {
         return wgslExprOrElse(this.color, "vec4f(0)");

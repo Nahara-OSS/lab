@@ -1,4 +1,4 @@
-import type { Node, Socket } from "../mod.ts";
+import type { Node, NodePart, Socket } from "../mod.ts";
 import css from "./node-view.css" with { type: "text" };
 import { procgenColor } from "./procgen.ts";
 
@@ -9,12 +9,14 @@ export class NodeViewElement extends HTMLElement {
     #title: Text;
     #node: Node | null = null;
     #socketDivs = new Map<Socket, HTMLDivElement>();
+    #parts = new Map<NodePart, [HTMLDivElement, HTMLSlotElement | null]>();
     #attached = false;
+    #slotIdCounter = 0;
 
     snapX: number = 8;
     snapY: number = 8;
 
-    #updateListener = () => this.#onNodeUpdate();
+    #updateListener = (e: CustomEvent<Node>) => this.#onNodeUpdate(e.detail);
     #addSocketListener = (e: CustomEvent<Socket>) => this.#onAddSocket(e.detail);
     #removeSocketListener = (e: CustomEvent<Socket>) => this.#onRemoveSocket(e.detail);
 
@@ -66,13 +68,14 @@ export class NodeViewElement extends HTMLElement {
         if (this.#attached) {
             if (this.#node != null) this.#nodeDetach(this.#node);
             if (v != null) this.#nodeAttach(v);
-            this.#onNodeUpdate();
+            this.#onNodeUpdate(v);
         }
 
         this.#node = v;
     }
 
     #nodeAttach(node: Node) {
+        for (const part of node.parts) this.#onAddPart(part);
         for (const socket of node.sockets.values()) this.#onAddSocket(socket);
 
         node.addEventListener("update", this.#updateListener);
@@ -82,6 +85,7 @@ export class NodeViewElement extends HTMLElement {
 
     #nodeDetach(node: Node) {
         for (const socket of node.sockets.values()) this.#onRemoveSocket(socket);
+        for (const part of node.parts) this.#onRemovePart(part);
 
         node.removeEventListener("update", this.#updateListener);
         node.removeEventListener("addsocket", this.#addSocketListener);
@@ -91,7 +95,7 @@ export class NodeViewElement extends HTMLElement {
     connectedCallback(): void {
         this.#attached = true;
         if (this.#node) this.#nodeAttach(this.#node);
-        this.#onNodeUpdate();
+        this.#onNodeUpdate(this.#node);
     }
 
     disconnectedCallback(): void {
@@ -99,18 +103,52 @@ export class NodeViewElement extends HTMLElement {
         if (this.#node) this.#nodeDetach(this.#node);
     }
 
-    #onNodeUpdate(): void {
-        this.#title.textContent = this.#node?.name ?? "Node";
+    #onNodeUpdate(node: Node | null): void {
+        this.#title.textContent = node?.name ?? "Node";
+    }
+
+    #onAddPart(part: NodePart): void {
+        const partDiv = document.createElement("div");
+        partDiv.style.minHeight = `${part.minHeight}px`;
+        partDiv.classList.add("node-part");
+
+        if (part.ui) {
+            const uiSlot = document.createElement("slot");
+            uiSlot.classList.add("content");
+            uiSlot.name = `${this.#slotIdCounter++}`;
+            partDiv.append(uiSlot);
+            this.#parts.set(part, [partDiv, uiSlot]);
+            this.dispatchEvent(new PartVisiblityEvent("partshow", part, uiSlot.name));
+        } else {
+            this.#parts.set(part, [partDiv, null]);
+        }
+
+        this.#shadow.append(partDiv);
+    }
+
+    #onRemovePart(part: NodePart): void {
+        const partElements = this.#parts.get(part);
+        if (partElements == null) return;
+
+        if (partElements[1] != null) {
+            this.dispatchEvent(new PartVisiblityEvent("parthide", part, partElements[1].name));
+        }
+
+        partElements[0].remove();
+        this.#parts.delete(part);
     }
 
     #onAddSocket(socket: Socket): void {
+        const partElements = this.#parts.get(socket.part);
+        if (partElements == null) return;
+
         const socketDiv = document.createElement("div");
         socketDiv.classList.add("socket");
         socketDiv.classList.add(socket.direction);
         socketDiv.part.add("socket");
         socketDiv.part.add(socket.direction);
         socketDiv.append(document.createTextNode(socket.name ?? socket.id), createTypeIndicator(socket.type));
-        this.#shadow.append(socketDiv);
+        partElements[0].insertBefore(socketDiv, partElements[1]);
         this.#socketDivs.set(socket, socketDiv);
 
         socketDiv.addEventListener("pointerdown", (e) => {
@@ -178,10 +216,18 @@ export interface NodeViewElementEventMap extends HTMLElementEventMap {
     "socketenter": SocketPointerEvent;
     "socketleave": SocketPointerEvent;
     "socketup": SocketPointerEvent;
+    "partshow": PartVisiblityEvent;
+    "parthide": PartVisiblityEvent;
 }
 
 export class SocketPointerEvent extends Event {
     constructor(type: string, public readonly socket: Socket, public readonly parent: PointerEvent) {
+        super(type);
+    }
+}
+
+export class PartVisiblityEvent extends Event {
+    constructor(type: string, public readonly part: NodePart, public readonly slot: string) {
         super(type);
     }
 }

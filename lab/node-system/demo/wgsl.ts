@@ -1,11 +1,8 @@
-import type { Network } from "../mod.ts";
-import { FragmentTarget } from "./nodes.ts";
+import type { FragmentTarget } from "./nodes.ts";
 
-export function buildFragmentShader(network: Network): string {
-    const targets = [...network.nodes].filter((n) => n instanceof FragmentTarget);
+export function buildShaderSource(target: FragmentTarget): string {
     return `
         struct VertexInputs { @builtin(position) position: vec4f, @location(0) uv: vec2f }
-        struct FragmentTargets { ${targets.map((_, i) => `@location(${i}) target${i}: vec4f`).join(", ")} }
 
         @vertex
         fn vertexShader(@builtin(vertex_index) index: u32) -> VertexInputs {
@@ -19,14 +16,14 @@ export function buildFragmentShader(network: Network): string {
         }
 
         @fragment
-        fn fragmentShader(vertexInputs: VertexInputs) -> FragmentTargets {
-            return FragmentTargets(${targets.map((t) => t.toWgslExpression()).join(", ")});
+        fn fragmentShader(vertexInputs: VertexInputs) -> @location(0) vec4f {
+            return ${target.toWgslExpression()};
         }
     `;
 }
 
-export function buildPipeline(device: GPUDevice, network: Network): GPURenderPipeline {
-    const shaderModule = device.createShaderModule({ code: buildFragmentShader(network) });
+export function buildPipeline(device: GPUDevice, target: FragmentTarget): GPURenderPipeline {
+    const shaderModule = device.createShaderModule({ code: buildShaderSource(target) });
     const pipeline = device.createRenderPipeline({
         layout: "auto",
         vertex: {

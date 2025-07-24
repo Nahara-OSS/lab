@@ -17,7 +17,7 @@ In order to consider this experiment a success, all required goals must be achie
 - [ ] Editor UI works in Chromium/Firefox
 - [ ] Usable in following environments: Chromium/Firefox and Deno
 - [x] Dynamically add and remove sockets
-- [ ] Custom UI on nodes
+- [x] Custom UI on nodes
 - [ ] Grouping nodes with sockets exporting
 - [ ] Framing nodes for organization
 - [ ] Routing wires

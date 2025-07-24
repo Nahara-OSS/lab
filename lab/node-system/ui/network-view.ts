@@ -1,7 +1,7 @@
 import type { Network } from "../network.ts";
 import type { Node, NodeConnectionEvent, Socket } from "../node.ts";
 import css from "./network-view.css" with { type: "text" };
-import { NodeViewElement } from "./node-view.ts";
+import { NodeViewElement, PartVisiblityEvent } from "./node-view.ts";
 import { procgenColor } from "./procgen.ts";
 
 const stylesheet = await new CSSStyleSheet().replace(css);
@@ -17,6 +17,7 @@ export class NetworkViewElement extends HTMLElement {
     #wireContainerSvg: SVGSVGElement;
     #nodeContainerDiv: HTMLDivElement;
     #attached = false;
+    #slotIdCounter = 0;
 
     #network: Network | null = null;
     #nodes = new Map<Node, NodeViewElement>();
@@ -135,7 +136,6 @@ export class NetworkViewElement extends HTMLElement {
 
         const nodeView = document.createElement(nodeViewId) as NodeViewElement;
         nodeView.classList.add("node");
-        nodeView.node = node;
         this.#nodes.set(node, nodeView);
         this.#updateNode(node);
         this.#nodeContainerDiv.append(nodeView);
@@ -190,6 +190,16 @@ export class NetworkViewElement extends HTMLElement {
             this.#connectingTo = null;
             this.#updateConnectingWire(e.parent);
         });
+
+        nodeView.addEventListener("partshow", (e) => {
+            const proxySlot = document.createElement("slot");
+            proxySlot.name = `${this.#slotIdCounter++}`;
+            proxySlot.slot = e.slot;
+            nodeView.append(proxySlot);
+            this.dispatchEvent(new PartVisiblityEvent("partshow", e.part, proxySlot.name));
+        });
+
+        nodeView.node = node;
     }
 
     #removeNode(node: Node): void {
@@ -266,7 +276,7 @@ export class NetworkViewElement extends HTMLElement {
 
         return [
             this.#panX + nx + sideX,
-            this.#panY + ny + 44 + socket.position * 24,
+            this.#panY + ny + 32 + socket.relativeY,
         ];
     }
 
@@ -295,4 +305,32 @@ export class NetworkViewElement extends HTMLElement {
         const bcpx = this.#connectingFrom.direction == "in" ? diff / 2 : -diff / 2;
         this.#connecting.setAttribute("d", `M ${sx},${sy} C ${sx + acpx},${sy},${dx + bcpx},${dy},${dx},${dy}`);
     }
+}
+
+export interface NetworkViewElement {
+    addEventListener<K extends keyof NetworkViewElementEventMap>(
+        type: K,
+        callback: (this: Node, e: NetworkViewElementEventMap[K]) => unknown,
+        options?: AddEventListenerOptions | boolean,
+    ): void;
+    addEventListener(
+        type: string,
+        callback: EventListenerOrEventListenerObject | null,
+        options?: AddEventListenerOptions | boolean,
+    ): void;
+    removeEventListener<K extends keyof NetworkViewElementEventMap>(
+        type: K,
+        callback: (this: Node, e: NetworkViewElementEventMap[K]) => unknown,
+        options?: EventListenerOptions | boolean,
+    ): void;
+    removeEventListener(
+        type: string,
+        callback: EventListenerOrEventListenerObject | null,
+        options?: EventListenerOptions | boolean,
+    ): void;
+}
+
+export interface NetworkViewElementEventMap extends HTMLElementEventMap {
+    "partshow": PartVisiblityEvent;
+    "parthide": PartVisiblityEvent;
 }
