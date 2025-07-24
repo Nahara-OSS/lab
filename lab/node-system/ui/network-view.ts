@@ -1,23 +1,34 @@
 import type { Network } from "../network.ts";
-import type { Node } from "../node.ts";
+import type { Node, NodeConnectionEvent, Socket } from "../node.ts";
 import css from "./network-view.css" with { type: "text" };
 import { NodeViewElement } from "./node-view.ts";
+import { procgenColor } from "./procgen.ts";
 
 const stylesheet = await new CSSStyleSheet().replace(css);
 
+interface WireInfo {
+    readonly src: Socket;
+    readonly dst: Socket;
+    readonly wire: SVGPathElement;
+}
+
 export class NetworkViewElement extends HTMLElement {
     #shadow = this.attachShadow({ mode: "closed" });
+    #wireContainerSvg: SVGSVGElement;
     #nodeContainerDiv: HTMLDivElement;
     #attached = false;
 
     #network: Network | null = null;
     #nodes = new Map<Node, NodeViewElement>();
+    #wires: WireInfo[] = [];
     #panX = 0;
     #panY = 0;
 
     #onNetworkAddNode = (e: CustomEvent<Node>) => this.#addNode(e.detail);
     #onNetworkRemoveNode = (e: CustomEvent<Node>) => this.#addNode(e.detail);
     #onNodeUpdate = (e: CustomEvent<Node>) => this.#updateNode(e.detail);
+    #onNodeConnect = (e: NodeConnectionEvent) => e.target == e.src.node ? this.#addWire(e.src, e.dst) : void 0;
+    #onNodeDisconnect = (e: NodeConnectionEvent) => e.target == e.src.node ? this.#removeWire(e.src, e.dst) : void 0;
 
     constructor() {
         super();
@@ -27,14 +38,21 @@ export class NetworkViewElement extends HTMLElement {
         wrapper.classList.add("wrapper");
         this.#shadow.append(wrapper);
 
+        this.#wireContainerSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        this.#wireContainerSvg.classList.add("wire-container");
+        this.#wireContainerSvg.style.backgroundPositionX = `${this.#panX}px`;
+        this.#wireContainerSvg.style.backgroundPositionY = `${this.#panY}px`;
+
         this.#nodeContainerDiv = document.createElement("div");
         this.#nodeContainerDiv.classList.add("node-container");
-        this.#nodeContainerDiv.style.backgroundPositionX = `${this.#panX}px`;
-        this.#nodeContainerDiv.style.backgroundPositionY = `${this.#panY}px`;
-        wrapper.append(this.#nodeContainerDiv);
 
-        this.#nodeContainerDiv.addEventListener("pointerdown", (e) => {
-            if (e.target != this.#nodeContainerDiv) return;
+        wrapper.append(
+            this.#wireContainerSvg,
+            this.#nodeContainerDiv,
+        );
+
+        this.#wireContainerSvg.addEventListener("pointerdown", (e) => {
+            if (e.target != this.#wireContainerSvg) return;
             e.preventDefault();
 
             const initialX = e.clientX;
@@ -49,13 +67,11 @@ export class NetworkViewElement extends HTMLElement {
                 this.#panX = initialPanX + dx;
                 this.#panY = initialPanY + dy;
 
-                for (const [node, nodeView] of this.#nodes) {
-                    nodeView.style.left = `${node.x + this.#panX}px`;
-                    nodeView.style.top = `${node.y + this.#panY}px`;
-                }
+                for (const [node] of this.#nodes) this.#updateNode(node);
+                for (const wire of this.#wires) this.#updateWire(wire);
 
-                this.#nodeContainerDiv.style.backgroundPositionX = `${this.#panX}px`;
-                this.#nodeContainerDiv.style.backgroundPositionY = `${this.#panY}px`;
+                this.#wireContainerSvg.style.backgroundPositionX = `${this.#panX}px`;
+                this.#wireContainerSvg.style.backgroundPositionY = `${this.#panY}px`;
             };
 
             const pointerUp = () => {
@@ -121,6 +137,8 @@ export class NetworkViewElement extends HTMLElement {
         this.#nodeContainerDiv.append(nodeView);
 
         node.addEventListener("update", this.#onNodeUpdate);
+        node.addEventListener("connect", this.#onNodeConnect);
+        node.addEventListener("disconnect", this.#onNodeDisconnect);
     }
 
     #removeNode(node: Node): void {
@@ -131,6 +149,8 @@ export class NetworkViewElement extends HTMLElement {
         this.#nodes.delete(node);
 
         node.removeEventListener("update", this.#onNodeUpdate);
+        node.removeEventListener("connect", this.#onNodeConnect);
+        node.removeEventListener("disconnect", this.#onNodeDisconnect);
     }
 
     #updateNode(node: Node): void {
@@ -140,5 +160,62 @@ export class NetworkViewElement extends HTMLElement {
         nodeView.style.width = `${node.width}px`;
         nodeView.style.left = `${node.x + this.#panX}px`;
         nodeView.style.top = `${node.y + this.#panY}px`;
+
+        for (const a of node.sockets.values()) {
+            for (const b of a.targets) {
+                const src = a.direction == "in" ? b : a;
+                const dst = a.direction == "in" ? a : b;
+                const idx = this.#wires.findIndex(({ src: s, dst: d }) => s == src && d == dst);
+                if (idx == -1) continue;
+                this.#updateWire(this.#wires[idx]);
+            }
+        }
+    }
+
+    #addWire(src: Socket, dst: Socket): void {
+        const idx = this.#wires.findIndex(({ src: s, dst: d }) => s == src && d == dst);
+        if (idx != -1) return;
+
+        const wire = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        wire.classList.add("wire");
+        this.#wireContainerSvg.append(wire);
+
+        const info: WireInfo = { src, dst, wire };
+        this.#updateWire(info);
+        this.#wires.push(info);
+
+        wire.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (e.buttons == 1) src.disconnect(dst);
+        });
+    }
+
+    #removeWire(src: Socket, dst: Socket): void {
+        const idx = this.#wires.findIndex(({ src: s, dst: d }) => s == src && d == dst);
+        if (idx == -1) return;
+
+        const [{ wire }] = this.#wires.splice(idx, 1);
+        wire.remove();
+    }
+
+    #updateWire(info: WireInfo): void {
+        const [sx, sy] = this.#socketPositionOf(info.src);
+        const [dx, dy] = this.#socketPositionOf(info.dst);
+        const diff = Math.abs(dx - sx);
+
+        info.wire.setAttribute("d", `M ${sx},${sy} C ${sx + diff / 2},${sy},${dx - diff / 2},${dy},${dx},${dy}`);
+        info.wire.setAttribute("stroke", procgenColor(info.src.type));
+    }
+
+    #socketPositionOf(socket: Socket): [number, number] {
+        const { x: nx, y: ny } = socket.node;
+        const sideX = socket.direction == "in" ? 0 : socket.node.width;
+
+        return [
+            this.#panX + nx + sideX,
+            this.#panY + ny + 44 + socket.position * 24,
+        ];
     }
 }

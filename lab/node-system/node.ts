@@ -21,17 +21,17 @@ visiblity.
  * // Simple usage
  * const node = new Node({ name: "My node" });
  * node.addSocket({ id: "input", direction: "in", type: "dtype" });
- * 
+ *
  * // Typical usage
  * class MyNode extends Node {
  *     readonly input: Socket;
- * 
+ *
  *     constructor(options: NodeCreateOptions) {
  *         super(options);
  *         this.input = this.addSocket({ id: "input", direction: "in", type: "dtype" });
  *     }
  * }
- * 
+ *
  * new MyNode().input.connect(...);
  * ```
  *
@@ -243,6 +243,12 @@ export interface Socket extends Readonly<SocketInfo> {
      */
     readonly node: Node;
 
+    /**
+     * The posiion of this socket inside node part. This will be used to calculate socket's coordinates when rendering
+     * the wires.
+     */
+    readonly position: number;
+
     readonly id: string;
     readonly type: string;
     readonly direction: SocketDirection;
@@ -280,6 +286,10 @@ class SocketInternals implements Socket {
         this.maxInputs = maxInputs ?? 1;
         this.name = name ?? null;
         this.description = description ?? null;
+    }
+
+    get position(): number {
+        return [...this.node.sockets.values()].indexOf(this);
     }
 
     connect(socket: Socket): void {

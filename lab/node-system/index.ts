@@ -28,12 +28,26 @@ class PulseGeneratorNode extends Node {
     }
 }
 
+class PulseReceiverNode extends Node {
+    readonly pulseIn: Socket;
+
+    constructor(options: NodeCreateOptions) {
+        super(options);
+        this.pulseIn = this.addSocket({ id: "pulseIn", direction: "in", type: "pulse", name: "Pulse In" });
+    }
+}
+
 const view = document.createElement("nahara-network-view");
 document.body.append(view);
 
 const network = new Network();
+const generator = new PulseGeneratorNode({ name: "Pulse Generator", x: 0, y: 240 });
+const receiver = new PulseReceiverNode({ name: "Pulse Receiver", x: 8 * 30, y: 240 });
+
 network.addNode(new SplitRgbaNode({ name: "Split RGBA", x: 0, y: 0 }));
-network.addNode(new PulseGeneratorNode({ name: "Pulse Generator", x: 8 * 30, y: 0 }));
+network.addNode(generator);
+network.addNode(receiver);
 console.log(network);
 
 view.network = network;
+generator.pulseOut.connect(receiver.pulseIn);
