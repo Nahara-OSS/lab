@@ -26,26 +26,21 @@
 
         > .wire {
             cursor: initial;
-            fill: transparent;
+            fill: none;
             stroke-linecap: round;
-            stroke-width: 12;
+            stroke-width: 10;
+            filter:
+                drop-shadow(1px 0 0 #7f7f7f)
+                drop-shadow(-1px 0 0 #7f7f7f)
+                drop-shadow(0 1px 0 #7f7f7f)
+                drop-shadow(0 -1px 0 #7f7f7f);
 
-            > .main {
-                stroke-width: 11;
-            }
-
-            > .outline {
-                stroke-width: 12;
-                stroke: #7f7f7f;
-            }
-
-            &:hover > .main {
+            &:hover {
                 stroke: oklch(0.8 0.2 19.217);
             }
 
             &.connecting {
                 stroke: unset;
-                stroke-dasharray: 10 20;
                 opacity: 0.5;
             }
         }

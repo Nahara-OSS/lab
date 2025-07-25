@@ -9,9 +9,7 @@ const stylesheet = await new CSSStyleSheet().replace(css);
 interface WireInfo {
     readonly src: Socket;
     readonly dst: Socket;
-    readonly group: SVGGElement;
-    readonly main: SVGPathElement;
-    readonly outline: SVGPathElement;
+    readonly wire: SVGPathElement;
 }
 
 export class NetworkViewElement extends HTMLElement {
@@ -267,21 +265,15 @@ export class NetworkViewElement extends HTMLElement {
         const idx = this.#wires.findIndex(({ src: s, dst: d }) => s == src && d == dst);
         if (idx != -1) return;
 
-        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        group.classList.add("wire");
+        const wire = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        wire.classList.add("wire");
+        this.#wireContainerSvg.append(wire);
 
-        const main = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        const outline = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        main.classList.add("main");
-        outline.classList.add("outline");
-        group.append(outline, main);
-        this.#wireContainerSvg.append(group);
-
-        const info: WireInfo = { src, dst, group, main, outline };
+        const info: WireInfo = { src, dst, wire };
         this.#updateWire(info);
         this.#wires.push(info);
 
-        main.addEventListener("pointerdown", (e) => {
+        wire.addEventListener("pointerdown", (e) => {
             e.preventDefault();
             e.stopPropagation();
 
@@ -293,8 +285,8 @@ export class NetworkViewElement extends HTMLElement {
         const idx = this.#wires.findIndex(({ src: s, dst: d }) => s == src && d == dst);
         if (idx == -1) return;
 
-        const [{ group }] = this.#wires.splice(idx, 1);
-        group.remove();
+        const [{ wire }] = this.#wires.splice(idx, 1);
+        wire.remove();
     }
 
     #updateWire(info: WireInfo): void {
@@ -303,9 +295,8 @@ export class NetworkViewElement extends HTMLElement {
         const diff = Math.abs(dx - sx);
 
         const path = `M ${sx},${sy} C ${sx + diff / 2},${sy},${dx - diff / 2},${dy},${dx},${dy}`;
-        info.main.setAttribute("d", path);
-        info.main.setAttribute("stroke", procgenColor(info.src.type));
-        info.outline.setAttribute("d", path);
+        info.wire.setAttribute("d", path);
+        info.wire.setAttribute("stroke", procgenColor(info.src.type));
     }
 
     #socketPositionOf(socket: Socket): [number, number] {
@@ -313,8 +304,8 @@ export class NetworkViewElement extends HTMLElement {
         const sideX = socket.direction == "in" ? 0 : socket.node.width;
 
         return [
-            this.#panX + nx + sideX + 0.5,
-            this.#panY + ny + 32 + socket.relativeY + 0.5,
+            this.#panX + nx + sideX,
+            this.#panY + ny + 32 + socket.relativeY + 0.75,
         ];
     }
 
