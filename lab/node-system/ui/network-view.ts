@@ -1,5 +1,5 @@
 import type { Network } from "../network.ts";
-import type { Node, NodeConnectionEvent, Socket } from "../node.ts";
+import type { Node, NodeConnectionEvent, NodePart, Socket } from "../node.ts";
 import css from "./network-view.css" with { type: "text" };
 import { NodeViewElement, PartVisiblityEvent } from "./node-view.ts";
 import { procgenColor } from "./procgen.ts";
@@ -21,6 +21,7 @@ export class NetworkViewElement extends HTMLElement {
 
     #network: Network | null = null;
     #nodes = new Map<Node, NodeViewElement>();
+    #proxiedParts = new Map<NodePart, HTMLSlotElement>();
     #wires: WireInfo[] = [];
     #panX = 0;
     #panY = 0;
@@ -34,6 +35,7 @@ export class NetworkViewElement extends HTMLElement {
     #onNodeUpdate = (e: CustomEvent<Node>) => this.#updateNode(e.detail);
     #onNodeConnect = (e: NodeConnectionEvent) => e.target == e.src.node ? this.#addWire(e.src, e.dst) : void 0;
     #onNodeDisconnect = (e: NodeConnectionEvent) => e.target == e.src.node ? this.#removeWire(e.src, e.dst) : void 0;
+    #onNodePartOrSocketUpdate = () => this.#wires.forEach(wire => this.#updateWire(wire));
 
     constructor() {
         super();
@@ -135,6 +137,7 @@ export class NetworkViewElement extends HTMLElement {
         if (nodeViewId == null) throw new Error(`NodeViewElement is not registered to customElements`);
 
         const nodeView = document.createElement(nodeViewId) as NodeViewElement;
+        nodeView.node = node;
         nodeView.classList.add("node");
         this.#nodes.set(node, nodeView);
         this.#updateNode(node);
@@ -143,6 +146,11 @@ export class NetworkViewElement extends HTMLElement {
         node.addEventListener("update", this.#onNodeUpdate);
         node.addEventListener("connect", this.#onNodeConnect);
         node.addEventListener("disconnect", this.#onNodeDisconnect);
+        node.addEventListener("addpart", this.#onNodePartOrSocketUpdate);
+        node.addEventListener("addsocket", this.#onNodePartOrSocketUpdate);
+        node.addEventListener("transfersocket", this.#onNodePartOrSocketUpdate);
+        node.addEventListener("removepart", this.#onNodePartOrSocketUpdate);
+        node.addEventListener("removesocket", this.#onNodePartOrSocketUpdate);
 
         nodeView.addEventListener("socketdown", (e) => {
             if (this.#connectingFrom != null) return;
@@ -191,15 +199,30 @@ export class NetworkViewElement extends HTMLElement {
             this.#updateConnectingWire(e.parent);
         });
 
-        nodeView.addEventListener("partshow", (e) => {
+        const proxyPart = (part: NodePart, slot: string): void => {
             const proxySlot = document.createElement("slot");
             proxySlot.name = `${this.#slotIdCounter++}`;
-            proxySlot.slot = e.slot;
+            proxySlot.slot = slot;
             nodeView.append(proxySlot);
-            this.dispatchEvent(new PartVisiblityEvent("partshow", e.part, proxySlot.name));
-        });
+            this.#proxiedParts.set(part, proxySlot);
+            this.dispatchEvent(new PartVisiblityEvent("partshow", part, proxySlot.name));
+        };
 
-        nodeView.node = node;
+        const unproxyPart = (part: NodePart): void => {
+            const proxySlot = this.#proxiedParts.get(part);
+            if (proxySlot == null) return;
+            proxySlot.remove();
+            this.#proxiedParts.delete(part);
+            this.dispatchEvent(new PartVisiblityEvent("parthide", part, proxySlot.name));
+        };
+
+        nodeView.addEventListener("partshow", (e) => proxyPart(e.part, e.slot));
+        nodeView.addEventListener("parthide", (e) => unproxyPart(e.part));
+
+        node.parts.forEach((part) => {
+            const slot = nodeView.getPartSlot(part);
+            if (slot != null) proxyPart(part, slot);
+        });
     }
 
     #removeNode(node: Node): void {
@@ -212,6 +235,11 @@ export class NetworkViewElement extends HTMLElement {
         node.removeEventListener("update", this.#onNodeUpdate);
         node.removeEventListener("connect", this.#onNodeConnect);
         node.removeEventListener("disconnect", this.#onNodeDisconnect);
+        node.removeEventListener("addpart", this.#onNodePartOrSocketUpdate);
+        node.removeEventListener("addsocket", this.#onNodePartOrSocketUpdate);
+        node.removeEventListener("transfersocket", this.#onNodePartOrSocketUpdate);
+        node.removeEventListener("removepart", this.#onNodePartOrSocketUpdate);
+        node.removeEventListener("removesocket", this.#onNodePartOrSocketUpdate);
     }
 
     #updateNode(node: Node): void {

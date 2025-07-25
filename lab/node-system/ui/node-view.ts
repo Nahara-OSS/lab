@@ -1,4 +1,4 @@
-import type { Node, NodePart, Socket } from "../mod.ts";
+import type { Node, NodePart, Socket, SocketTransferEvent } from "../mod.ts";
 import css from "./node-view.css" with { type: "text" };
 import { procgenColor } from "./procgen.ts";
 
@@ -8,8 +8,7 @@ export class NodeViewElement extends HTMLElement {
     #shadow = this.attachShadow({ mode: "closed" });
     #title: Text;
     #node: Node | null = null;
-    #socketDivs = new Map<Socket, HTMLDivElement>();
-    #parts = new Map<NodePart, [HTMLDivElement, HTMLSlotElement | null]>();
+    #parts = new Map<NodePart, PartViewInfo>();
     #attached = false;
     #slotIdCounter = 0;
 
@@ -18,7 +17,10 @@ export class NodeViewElement extends HTMLElement {
 
     #updateListener = (e: CustomEvent<Node>) => this.#onNodeUpdate(e.detail);
     #addSocketListener = (e: CustomEvent<Socket>) => this.#onAddSocket(e.detail);
+    #transferSocketListener = (e: SocketTransferEvent) => this.#onTransferSocket(e.socket, e.from, e.to);
     #removeSocketListener = (e: CustomEvent<Socket>) => this.#onRemoveSocket(e.detail);
+    #addPartListener = (e: CustomEvent<NodePart>) => this.#onAddPart(e.detail);
+    #removePartListener = (e: CustomEvent<NodePart>) => this.#onRemovePart(e.detail);
 
     constructor() {
         super();
@@ -80,7 +82,10 @@ export class NodeViewElement extends HTMLElement {
 
         node.addEventListener("update", this.#updateListener);
         node.addEventListener("addsocket", this.#addSocketListener);
+        node.addEventListener("transfersocket", this.#transferSocketListener);
         node.addEventListener("removesocket", this.#removeSocketListener);
+        node.addEventListener("addpart", this.#addPartListener);
+        node.addEventListener("removepart", this.#removePartListener);
     }
 
     #nodeDetach(node: Node) {
@@ -89,7 +94,10 @@ export class NodeViewElement extends HTMLElement {
 
         node.removeEventListener("update", this.#updateListener);
         node.removeEventListener("addsocket", this.#addSocketListener);
+        node.removeEventListener("transfersocket", this.#transferSocketListener);
         node.removeEventListener("removesocket", this.#removeSocketListener);
+        node.removeEventListener("addpart", this.#addPartListener);
+        node.removeEventListener("removepart", this.#removePartListener);
     }
 
     connectedCallback(): void {
@@ -103,38 +111,40 @@ export class NodeViewElement extends HTMLElement {
         if (this.#node) this.#nodeDetach(this.#node);
     }
 
+    /**
+     * Obtain the `<slot>` name for given node part. Returns `null` if such part does not have an associated slot name.
+     * The function may always return `null` if `<nahara-node-view>` is not attached to the DOM tree.
+     */
+    getPartSlot(part: NodePart): string | null {
+        return this.#parts.get(part)?.slot?.name ?? null;
+    }
+
     #onNodeUpdate(node: Node | null): void {
         this.#title.textContent = node?.name ?? "Node";
     }
 
     #onAddPart(part: NodePart): void {
-        const partDiv = document.createElement("div");
-        partDiv.style.minHeight = `${part.minHeight}px`;
-        partDiv.classList.add("node-part");
+        const partView: PartViewInfo = { container: document.createElement("div"), sockets: [], slot: null };
+        partView.container.style.minHeight = `${part.minHeight}px`;
+        partView.container.classList.add("node-part");
 
         if (part.ui) {
-            const uiSlot = document.createElement("slot");
-            uiSlot.classList.add("content");
-            uiSlot.name = `${this.#slotIdCounter++}`;
-            partDiv.append(uiSlot);
-            this.#parts.set(part, [partDiv, uiSlot]);
-            this.dispatchEvent(new PartVisiblityEvent("partshow", part, uiSlot.name));
-        } else {
-            this.#parts.set(part, [partDiv, null]);
+            partView.slot = document.createElement("slot");
+            partView.slot.classList.add("content");
+            partView.slot.name = `${this.#slotIdCounter++}`;
+            partView.container.append(partView.slot);
+            this.dispatchEvent(new PartVisiblityEvent("partshow", part, partView.slot.name));
         }
 
-        this.#shadow.append(partDiv);
+        this.#parts.set(part, partView);
+        this.#shadow.append(partView.container);
     }
 
     #onRemovePart(part: NodePart): void {
-        const partElements = this.#parts.get(part);
-        if (partElements == null) return;
-
-        if (partElements[1] != null) {
-            this.dispatchEvent(new PartVisiblityEvent("parthide", part, partElements[1].name));
-        }
-
-        partElements[0].remove();
+        const partView = this.#parts.get(part);
+        if (partView == null) return;
+        if (partView.slot != null) this.dispatchEvent(new PartVisiblityEvent("parthide", part, partView.slot.name));
+        partView.container.remove();
         this.#parts.delete(part);
     }
 
@@ -148,8 +158,8 @@ export class NodeViewElement extends HTMLElement {
         socketDiv.part.add("socket");
         socketDiv.part.add(socket.direction);
         socketDiv.append(document.createTextNode(socket.name ?? socket.id), createTypeIndicator(socket.type));
-        partElements[0].insertBefore(socketDiv, partElements[1]);
-        this.#socketDivs.set(socket, socketDiv);
+        partElements.container.insertBefore(socketDiv, partElements.slot);
+        partElements.sockets.push([socket, socketDiv]);
 
         socketDiv.addEventListener("pointerdown", (e) => {
             e.preventDefault();
@@ -174,8 +184,28 @@ export class NodeViewElement extends HTMLElement {
     }
 
     #onRemoveSocket(socket: Socket): void {
-        this.#socketDivs.get(socket)?.remove();
-        this.#socketDivs.delete(socket);
+        const partElements = this.#parts.get(socket.part);
+        if (partElements == null) return;
+
+        const idx = partElements.sockets.findIndex(([s]) => s == socket);
+        if (idx == -1) return;
+
+        partElements.sockets[idx][1].remove();
+        partElements.sockets.splice(idx, 1);
+    }
+
+    #onTransferSocket(socket: Socket, from: NodePart, to: NodePart): void {
+        const fromPartView = this.#parts.get(from);
+        const toPartView = this.#parts.get(to);
+        if (fromPartView == null || toPartView == null) return;
+
+        const idxFrom = fromPartView.sockets.findIndex(([s]) => s == socket);
+        if (idxFrom == -1) return;
+
+        const [[_, socketDiv]] = fromPartView.sockets.splice(idxFrom, 1);
+        const idxTo = to.sockets.indexOf(socket);
+        const before = (idxTo != -1 ? toPartView.sockets[idxTo]?.[1] : null) ?? toPartView.slot;
+        toPartView.container.insertBefore(socketDiv, before);
     }
 }
 
@@ -230,4 +260,10 @@ export class PartVisiblityEvent extends Event {
     constructor(type: string, public readonly part: NodePart, public readonly slot: string) {
         super(type);
     }
+}
+
+interface PartViewInfo {
+    container: HTMLDivElement;
+    slot: HTMLSlotElement | null;
+    sockets: [Socket, HTMLDivElement][];
 }

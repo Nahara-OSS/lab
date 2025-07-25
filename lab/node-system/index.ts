@@ -1,4 +1,14 @@
-import { FragmentTarget, MergeVec2f, MergeVec4f, SplitVec2f, SplitVec4f, Vec4f, VertexInput } from "./demo/nodes.ts";
+import {
+    FragmentTarget,
+    MergeVec2f,
+    MergeVec4f,
+    SplitVec2f,
+    SplitVec4f,
+    StringReader,
+    Todo,
+    Vec4f,
+    VertexInput,
+} from "./demo/nodes.ts";
 import { buildPipeline, buildShaderSource } from "./demo/wgsl.ts";
 import "./index.css";
 import { Network } from "./mod.ts";
@@ -83,6 +93,35 @@ view.addEventListener("partshow", (e) => {
         div.append(renderBtn, shaderBtn);
     }
 
+    if (node instanceof Todo) {
+        const part = e.part;
+        div.style.display = "flex";
+        div.style.gap = "4px";
+        div.style.alignItems = "center";
+
+        if (part == node.control) {
+            const addBtn = document.createElement("button");
+            addBtn.textContent = "Add todo";
+            addBtn.addEventListener("click", () => node.addTodo());
+
+            div.append(addBtn);
+        } else {
+            const content = node.content.get(part);
+
+            const input = document.createElement("input");
+            input.style.width = "100%";
+            input.type = "text";
+            input.value = content?.[0] ?? "";
+            input.addEventListener("input", () => node.changeContent(part, input.value));
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "-";
+            deleteBtn.addEventListener("click", () => node.deleteTodo(part));
+
+            div.append(input, deleteBtn);
+        }
+    }
+
     view.append(div);
 });
 
@@ -98,6 +137,7 @@ document.body.append(canvas, view, runBtn);
 const network = new Network();
 view.network = network;
 
+// Basic
 network.addNode(new VertexInput({ name: "Vertex Input", x: 240 * 0 }));
 network.addNode(new Vec4f({ name: "Vector 4D", x: 240 * 1 }));
 network.addNode(new SplitVec4f({ name: "Split 4D Vector", x: 240 * 2 }));
@@ -105,3 +145,7 @@ network.addNode(new MergeVec4f({ name: "Merge 4D Vector", x: 240 * 3 }));
 network.addNode(new SplitVec2f({ name: "Split 2D Vector", x: 240 * 4 }));
 network.addNode(new MergeVec2f({ name: "Merge 2D Vector", x: 240 * 5 }));
 network.addNode(new FragmentTarget({ name: "Fragment Target", x: 240 * 6 }));
+
+// Dynamic
+network.addNode(new Todo({ name: "Todo", x: 240 * 0, y: 240 }));
+network.addNode(new StringReader({ name: "String Reader", x: 240 * 1, y: 240 }));

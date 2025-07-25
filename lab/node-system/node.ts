@@ -146,16 +146,10 @@ export class Node extends EventTarget {
         if (socket == null) throw new Error(`Socket with ID ${id} does not exists on this node`);
 
         socket.disconnectAll();
-        this.dispatchEvent(new CustomEvent("removesocket", { detail: socket }));
-
-        if (socket.part != this.#defaultPart) {
-            socket.part.delete(socket);
-        } else {
-            const idx = this.#defaultPart.sockets.indexOf(socket);
-            if (idx != -1) this.#defaultPart.sockets.splice(idx, 1);
-        }
-
+        const idx = socket.part.sockets.indexOf(socket);
+        if (idx != -1) socket.part.sockets.splice(idx, 1);
         this.#sockets.delete(socket.id);
+        this.dispatchEvent(new CustomEvent("removesocket", { detail: socket }));
     }
 
     addPart(info: NodePartInfo = {}): NodePart {
@@ -171,8 +165,8 @@ export class Node extends EventTarget {
         if (idx == -1) return;
 
         for (const socket of part.sockets) part.delete(socket);
-        this.dispatchEvent(new CustomEvent("removepart", { detail: part }));
         this.#parts.splice(idx, 1);
+        this.dispatchEvent(new CustomEvent("removepart", { detail: part }));
     }
 }
 

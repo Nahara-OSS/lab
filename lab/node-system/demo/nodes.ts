@@ -132,3 +132,38 @@ export class FragmentTarget extends Node {
         return wgslExprOrElse(this.color, "vec4f(0)");
     }
 }
+
+export class Todo extends Node {
+    readonly control: NodePart = this.addPart({ ui: true, minHeight: 32 });
+    #content = new Map<NodePart, [string, Socket]>();
+
+    get content(): ReadonlyMap<NodePart, [string, Socket]> {
+        return this.#content;
+    }
+
+    addTodo(): void {
+        const content = this.addPart({ ui: true, minHeight: 32 });
+        const socket = this.addSocket({ id: crypto.randomUUID(), type: "string", direction: "out", name: "Content" });
+        content.add(socket);
+        this.#content.set(content, ["", socket]);
+    }
+
+    changeContent(part: NodePart, content: string): void {
+        const entry = this.#content.get(part);
+        if (entry != null) entry[0] = content;
+    }
+
+    deleteTodo(part: NodePart): void {
+        const entry = this.#content.get(part);
+
+        if (entry != null) {
+            this.deleteSocket(entry[1]);
+            this.deletePart(part);
+            this.#content.delete(part);
+        }
+    }
+}
+
+export class StringReader extends Node {
+    readonly input: Socket = this.addSocket({ id: "input", direction: "in", type: "string", name: "Input" });
+}
