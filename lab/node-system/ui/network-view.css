@@ -9,6 +9,12 @@
     height: 100%;
     position: relative;
     overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+
+    &:active {
+        cursor: grabbing;
+    }
 
     > .wire-container {
         position: absolute;
@@ -20,8 +26,7 @@
         background-image: radial-gradient(#efefef 1px, transparent 1px);
         background-size: 8px 8px;
         background-repeat: repeat;
-        cursor: grab;
-        touch-action: none;
+        pointer-events: none;
         overscroll-behavior: none;
 
         > .wire {
@@ -29,6 +34,7 @@
             fill: none;
             stroke-linecap: round;
             stroke-width: 10;
+            pointer-events: all;
             filter:
                 drop-shadow(1px 0 0 #7f7f7f)
                 drop-shadow(-1px 0 0 #7f7f7f)
@@ -45,9 +51,6 @@
             }
         }
 
-        &:active {
-            cursor: grabbing;
-        }
     }
     
     > .node-container {
@@ -60,6 +63,19 @@
         > .node {
             position: absolute;
             cursor: initial;
+        }
+
+        > .selected::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: calc(100% + 20px);
+            height: calc(100% + 20px);
+            border: 2px solid #7f7f7f;
+            pointer-events: none;
+            touch-action: none;
+            box-sizing: border-box;
         }
     }
 }

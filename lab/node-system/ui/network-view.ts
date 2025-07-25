@@ -21,6 +21,7 @@ export class NetworkViewElement extends HTMLElement {
 
     #network: Network | null = null;
     #nodes = new Map<Node, NodeViewElement>();
+    #selectedNode: Node | null = null;
     #proxiedParts = new Map<NodePart, HTMLSlotElement>();
     #wires: WireInfo[] = [];
     #panX = 0;
@@ -43,7 +44,7 @@ export class NetworkViewElement extends HTMLElement {
 
         const wrapper = document.createElement("div");
         wrapper.classList.add("wrapper");
-        this.#shadow.append(wrapper);
+        wrapper.tabIndex = 0;
 
         this.#wireContainerSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         this.#wireContainerSvg.classList.add("wire-container");
@@ -53,15 +54,15 @@ export class NetworkViewElement extends HTMLElement {
         this.#nodeContainerDiv = document.createElement("div");
         this.#nodeContainerDiv.classList.add("node-container");
 
-        wrapper.append(
-            this.#wireContainerSvg,
-            this.#nodeContainerDiv,
-        );
+        wrapper.append(this.#wireContainerSvg, this.#nodeContainerDiv);
+        this.#shadow.append(wrapper);
 
-        this.#wireContainerSvg.addEventListener("pointerdown", (e) => {
-            if (e.target != this.#wireContainerSvg) return;
+        wrapper.addEventListener("pointerdown", (e) => {
+            if (e.target != wrapper) return;
             e.preventDefault();
 
+            wrapper.focus();
+            this.selectedNode = null;
             const initialX = e.clientX;
             const initialY = e.clientY;
             const initialPanX = this.#panX;
@@ -104,6 +105,28 @@ export class NetworkViewElement extends HTMLElement {
         }
 
         this.#network = v;
+    }
+
+    get selectedNode(): Node | null {
+        return this.#selectedNode;
+    }
+
+    set selectedNode(v: Node | null) {
+        if (this.#selectedNode == v) return;
+
+        if (this.#selectedNode != null) {
+            const nodeView = this.#nodes.get(this.#selectedNode);
+            if (nodeView != null) nodeView.classList.remove("selected");
+        }
+
+        this.#selectedNode = v;
+
+        if (v != null) {
+            const nodeView = this.#nodes.get(v);
+            if (nodeView != null) nodeView.classList.add("selected");
+        }
+
+        this.dispatchEvent(new CustomEvent("nodeselect", { detail: v }));
     }
 
     #networkAttach(network: Network) {
@@ -151,6 +174,8 @@ export class NetworkViewElement extends HTMLElement {
         node.addEventListener("transfersocket", this.#onNodePartOrSocketUpdate);
         node.addEventListener("removepart", this.#onNodePartOrSocketUpdate);
         node.addEventListener("removesocket", this.#onNodePartOrSocketUpdate);
+
+        nodeView.addEventListener("pointerdown", () => this.selectedNode = node);
 
         nodeView.addEventListener("socketdown", (e) => {
             if (this.#connectingFrom != null) return;
@@ -231,6 +256,7 @@ export class NetworkViewElement extends HTMLElement {
 
         nodeView.remove();
         this.#nodes.delete(node);
+        if (this.#selectedNode == node) this.selectedNode = null;
 
         node.removeEventListener("update", this.#onNodeUpdate);
         node.removeEventListener("connect", this.#onNodeConnect);
@@ -362,4 +388,5 @@ export interface NetworkViewElement {
 export interface NetworkViewElementEventMap extends HTMLElementEventMap {
     "partshow": PartVisiblityEvent;
     "parthide": PartVisiblityEvent;
+    "nodeselect": CustomEvent<Node | null>;
 }
