@@ -9,7 +9,9 @@ const stylesheet = await new CSSStyleSheet().replace(css);
 interface WireInfo {
     readonly src: Socket;
     readonly dst: Socket;
-    readonly wire: SVGPathElement;
+    readonly group: SVGGElement;
+    readonly main: SVGPathElement;
+    readonly outline: SVGPathElement;
 }
 
 export class NetworkViewElement extends HTMLElement {
@@ -35,7 +37,7 @@ export class NetworkViewElement extends HTMLElement {
     #onNodeUpdate = (e: CustomEvent<Node>) => this.#updateNode(e.detail);
     #onNodeConnect = (e: NodeConnectionEvent) => e.target == e.src.node ? this.#addWire(e.src, e.dst) : void 0;
     #onNodeDisconnect = (e: NodeConnectionEvent) => e.target == e.src.node ? this.#removeWire(e.src, e.dst) : void 0;
-    #onNodePartOrSocketUpdate = () => this.#wires.forEach(wire => this.#updateWire(wire));
+    #onNodePartOrSocketUpdate = () => this.#wires.forEach((wire) => this.#updateWire(wire));
 
     constructor() {
         super();
@@ -265,15 +267,21 @@ export class NetworkViewElement extends HTMLElement {
         const idx = this.#wires.findIndex(({ src: s, dst: d }) => s == src && d == dst);
         if (idx != -1) return;
 
-        const wire = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        wire.classList.add("wire");
-        this.#wireContainerSvg.append(wire);
+        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        group.classList.add("wire");
 
-        const info: WireInfo = { src, dst, wire };
+        const main = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const outline = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        main.classList.add("main");
+        outline.classList.add("outline");
+        group.append(outline, main);
+        this.#wireContainerSvg.append(group);
+
+        const info: WireInfo = { src, dst, group, main, outline };
         this.#updateWire(info);
         this.#wires.push(info);
 
-        wire.addEventListener("pointerdown", (e) => {
+        main.addEventListener("pointerdown", (e) => {
             e.preventDefault();
             e.stopPropagation();
 
@@ -285,8 +293,8 @@ export class NetworkViewElement extends HTMLElement {
         const idx = this.#wires.findIndex(({ src: s, dst: d }) => s == src && d == dst);
         if (idx == -1) return;
 
-        const [{ wire }] = this.#wires.splice(idx, 1);
-        wire.remove();
+        const [{ group }] = this.#wires.splice(idx, 1);
+        group.remove();
     }
 
     #updateWire(info: WireInfo): void {
@@ -294,8 +302,10 @@ export class NetworkViewElement extends HTMLElement {
         const [dx, dy] = this.#socketPositionOf(info.dst);
         const diff = Math.abs(dx - sx);
 
-        info.wire.setAttribute("d", `M ${sx},${sy} C ${sx + diff / 2},${sy},${dx - diff / 2},${dy},${dx},${dy}`);
-        info.wire.setAttribute("stroke", procgenColor(info.src.type));
+        const path = `M ${sx},${sy} C ${sx + diff / 2},${sy},${dx - diff / 2},${dy},${dx},${dy}`;
+        info.main.setAttribute("d", path);
+        info.main.setAttribute("stroke", procgenColor(info.src.type));
+        info.outline.setAttribute("d", path);
     }
 
     #socketPositionOf(socket: Socket): [number, number] {
@@ -303,8 +313,8 @@ export class NetworkViewElement extends HTMLElement {
         const sideX = socket.direction == "in" ? 0 : socket.node.width;
 
         return [
-            this.#panX + nx + sideX,
-            this.#panY + ny + 32 + socket.relativeY,
+            this.#panX + nx + sideX + 0.5,
+            this.#panY + ny + 32 + socket.relativeY + 0.5,
         ];
     }
 

@@ -39,6 +39,7 @@
         border-radius: 100px;
         top: 50%;
         translate: 0 -50%;
+        box-sizing: border-box;
     }
 
     &.in {
