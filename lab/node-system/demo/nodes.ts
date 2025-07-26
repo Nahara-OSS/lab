@@ -1,5 +1,5 @@
-import { Node } from "../mod.ts";
-import type { NodeCreateOptions, NodePart, Socket } from "../node.ts";
+import { Node, type NodeCreateOptions } from "../mod.ts";
+import type { NodePart, Socket } from "../node.ts";
 
 export abstract class ShaderNode extends Node {
     abstract generateWgslExpression(socket: Socket): string;
@@ -11,9 +11,23 @@ function wgslExprOrElse(socket: Socket, defaultValue: string): string {
     return defaultValue;
 }
 
-export class Vec4f extends ShaderNode {
-    #uiPart = this.addPart({ ui: true, minHeight: 24 * 4 + 8 });
+export class Scalar extends ShaderNode {
+    readonly ui = this.addPart({ ui: true, minHeight: 24 * 1 });
+    readonly output: Socket = this.addSocket({ id: "vector", direction: "out", type: "f32", name: "Vector" });
+    value: number = 0;
 
+    constructor(options: NodeCreateOptions) {
+        super(options);
+        this.ui.add(this.output);
+    }
+
+    override generateWgslExpression(): string {
+        return `${this.value}`;
+    }
+}
+
+export class Vec4f extends ShaderNode {
+    readonly ui = this.addPart({ ui: true, minHeight: 24 * 4 });
     readonly vector: Socket = this.addSocket({ id: "vector", direction: "out", type: "vec4f", name: "Vector" });
     valueX: number = 0;
     valueY: number = 0;
@@ -22,11 +36,27 @@ export class Vec4f extends ShaderNode {
 
     constructor(options: NodeCreateOptions) {
         super(options);
-        this.#uiPart.add(this.vector);
+        this.ui.add(this.vector);
     }
 
     override generateWgslExpression(): string {
-        return `vec4f(${this.valueX},  ${this.valueY}, ${this.valueZ}, ${this.valueW})`;
+        return `vec4f(${this.valueX}, ${this.valueY}, ${this.valueZ}, ${this.valueW})`;
+    }
+}
+
+export class Vec2f extends ShaderNode {
+    readonly ui = this.addPart({ ui: true, minHeight: 24 * 2 });
+    readonly vector: Socket = this.addSocket({ id: "vector", direction: "out", type: "vec2f", name: "Vector" });
+    valueX: number = 0;
+    valueY: number = 0;
+
+    constructor(options: NodeCreateOptions) {
+        super(options);
+        this.ui.add(this.vector);
+    }
+
+    override generateWgslExpression(): string {
+        return `vec2f(${this.valueX}, ${this.valueY})`;
     }
 }
 
@@ -119,14 +149,8 @@ export class VertexInput extends ShaderNode {
 }
 
 export class FragmentTarget extends Node {
-    readonly ui: NodePart = this.addPart({ ui: true, minHeight: 32 });
-    readonly afterUi: NodePart = this.addPart();
+    readonly ui: NodePart = this.addPart({ ui: true, minHeight: 92 });
     readonly color: Socket = this.addSocket({ id: "color", direction: "in", type: "vec4f", name: "Color" });
-
-    constructor(options: NodeCreateOptions) {
-        super(options);
-        this.afterUi.add(this.color);
-    }
 
     toWgslExpression(): string {
         return wgslExprOrElse(this.color, "vec4f(0)");

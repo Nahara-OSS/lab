@@ -36,27 +36,33 @@ export class NodeViewElement extends HTMLElement {
             e.preventDefault();
             if (this.#node == null) return;
 
-            const node = this.#node;
-            const initialX = e.clientX;
-            const initialY = e.clientY;
-            const initialNodeX = this.#node.x;
-            const initialNodeY = this.#node.y;
+            if (e.buttons == 1) {
+                const node = this.#node;
+                const initialX = e.clientX;
+                const initialY = e.clientY;
+                const initialNodeX = this.#node.x;
+                const initialNodeY = this.#node.y;
 
-            const pointerMove = (e: PointerEvent) => {
-                e.preventDefault();
-                const dx = e.clientX - initialX;
-                const dy = e.clientY - initialY;
-                node.x = this.snapX > 0 ? Math.round((initialNodeX + dx) / this.snapX) * this.snapX : initialNodeX + dx;
-                node.y = this.snapY > 0 ? Math.round((initialNodeY + dy) / this.snapY) * this.snapY : initialNodeY + dy;
-            };
+                const pointerMove = (e: PointerEvent) => {
+                    e.preventDefault();
+                    const dx = e.clientX - initialX;
+                    const dy = e.clientY - initialY;
+                    node.x = this.snapX > 0
+                        ? Math.round((initialNodeX + dx) / this.snapX) * this.snapX
+                        : initialNodeX + dx;
+                    node.y = this.snapY > 0
+                        ? Math.round((initialNodeY + dy) / this.snapY) * this.snapY
+                        : initialNodeY + dy;
+                };
 
-            const pointerUp = () => {
-                document.removeEventListener("pointermove", pointerMove);
-                document.removeEventListener("pointerup", pointerUp);
-            };
+                const pointerUp = () => {
+                    document.removeEventListener("pointermove", pointerMove);
+                    document.removeEventListener("pointerup", pointerUp);
+                };
 
-            document.addEventListener("pointermove", pointerMove);
-            document.addEventListener("pointerup", pointerUp);
+                document.addEventListener("pointermove", pointerMove);
+                document.addEventListener("pointerup", pointerUp);
+            }
         });
     }
 
@@ -163,7 +169,7 @@ export class NodeViewElement extends HTMLElement {
 
         socketDiv.addEventListener("pointerdown", (e) => {
             e.preventDefault();
-            this.dispatchEvent(new SocketPointerEvent("socketdown", socket, e));
+            if (e.buttons == 1) this.dispatchEvent(new SocketPointerEvent("socketdown", socket, e));
         });
 
         socketDiv.addEventListener("pointerup", (e) => {

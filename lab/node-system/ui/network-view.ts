@@ -13,6 +13,7 @@ interface WireInfo {
 }
 
 export class NetworkViewElement extends HTMLElement {
+    static readonly observedAttributes: string[] = ["pan-x", "pan-y"];
     #shadow = this.attachShadow({ mode: "closed" });
     #wireContainerSvg: SVGSVGElement;
     #nodeContainerDiv: HTMLDivElement;
@@ -26,6 +27,7 @@ export class NetworkViewElement extends HTMLElement {
     #wires: WireInfo[] = [];
     #panX = 0;
     #panY = 0;
+    #ignoreAttrs = false;
 
     #connecting: SVGPathElement | null = null;
     #connectingFrom: Socket | null = null;
@@ -58,37 +60,52 @@ export class NetworkViewElement extends HTMLElement {
         this.#shadow.append(wrapper);
 
         wrapper.addEventListener("pointerdown", (e) => {
-            if (e.target != wrapper) return;
+            const clickedInWrapper = e.target == wrapper;
+
+            if ((e.buttons & 3) != 0 && clickedInWrapper) { // left + right
+                wrapper.focus();
+                this.selectedNode = null;
+            }
+
+            if ((e.buttons & 2) == 2 && clickedInWrapper) {
+                e.preventDefault();
+                this.dispatchEvent(new NodeOptionEvent("nodeoption", null, e));
+            }
+
+            if ((e.buttons & 4) == 4) {
+                e.preventDefault();
+                const initialX = e.clientX;
+                const initialY = e.clientY;
+                const initialPanX = this.#panX;
+                const initialPanY = this.#panY;
+
+                const pointerMove = (e: PointerEvent) => {
+                    e.preventDefault();
+                    const dx = e.clientX - initialX;
+                    const dy = e.clientY - initialY;
+                    this.setViewParams({ panX: initialPanX + dx, panY: initialPanY + dy });
+                };
+
+                const pointerUp = () => {
+                    document.removeEventListener("pointermove", pointerMove);
+                    document.removeEventListener("pointerup", pointerUp);
+                };
+
+                document.addEventListener("pointermove", pointerMove);
+                document.addEventListener("pointerup", pointerUp);
+            }
+        });
+
+        wrapper.addEventListener("wheel", (e) => {
             e.preventDefault();
 
-            wrapper.focus();
-            this.selectedNode = null;
-            const initialX = e.clientX;
-            const initialY = e.clientY;
-            const initialPanX = this.#panX;
-            const initialPanY = this.#panY;
+            // In theory we could determine whether user is scrolling with Windows Precision Touchpad and mouse wheel.
+            // But it is a hacky solution that could trigger false positives.
+            // We just accept the fact that normal mouse wheel indicates panning, while holding Ctrl indicates zooming.
 
-            const pointerMove = (e: PointerEvent) => {
-                e.preventDefault();
-                const dx = e.clientX - initialX;
-                const dy = e.clientY - initialY;
-                this.#panX = initialPanX + dx;
-                this.#panY = initialPanY + dy;
-
-                for (const [node] of this.#nodes) this.#updateNode(node);
-                for (const wire of this.#wires) this.#updateWire(wire);
-
-                this.#wireContainerSvg.style.backgroundPositionX = `${this.#panX}px`;
-                this.#wireContainerSvg.style.backgroundPositionY = `${this.#panY}px`;
-            };
-
-            const pointerUp = () => {
-                document.removeEventListener("pointermove", pointerMove);
-                document.removeEventListener("pointerup", pointerUp);
-            };
-
-            document.addEventListener("pointermove", pointerMove);
-            document.addEventListener("pointerup", pointerUp);
+            if (!e.ctrlKey) {
+                this.setViewParams({ panX: this.#panX - e.deltaX, panY: this.#panY - e.deltaY });
+            }
         });
     }
 
@@ -127,6 +144,69 @@ export class NetworkViewElement extends HTMLElement {
         }
 
         this.dispatchEvent(new CustomEvent("nodeselect", { detail: v }));
+    }
+
+    get panX(): number {
+        return this.#panX;
+    }
+
+    set panX(v: number) {
+        this.setViewParams({ panX: v });
+    }
+
+    get panY(): number {
+        return this.#panY;
+    }
+
+    set panY(v: number) {
+        this.setViewParams({ panY: v });
+    }
+
+    attributeChangedCallback(attr: string, oldValue: string | null, newValue: string | null): void {
+        if (this.#ignoreAttrs) return;
+        if (oldValue == newValue) return;
+
+        const asNumber = newValue != null ? parseFloat(newValue) : 0;
+
+        switch (attr) {
+            case "pan-x":
+                this.#setViewParams(asNumber, this.#panY, false);
+                break;
+            case "pan-y":
+                this.#setViewParams(this.#panX, asNumber, false);
+                break;
+            default:
+                break;
+        }
+    }
+
+    setViewParams({ panX = this.#panX, panY = this.#panY }: {
+        panX?: number;
+        panY?: number;
+    } = {}): void {
+        this.#setViewParams(panX, panY, true);
+    }
+
+    #ignoreAttributes(): Disposable {
+        this.#ignoreAttrs = true;
+        return { [Symbol.dispose]: () => this.#ignoreAttrs = false };
+    }
+
+    #setViewParams(panX: number, panY: number, adjustAttrs: boolean): void {
+        if (adjustAttrs) {
+            using _ = this.#ignoreAttributes();
+            this.setAttribute("pan-x", `${panX}`);
+            this.setAttribute("pan-y", `${panY}`);
+        }
+
+        this.#panX = panX;
+        this.#panY = panY;
+
+        for (const [node] of this.#nodes) this.#updateNode(node);
+        for (const wire of this.#wires) this.#updateWire(wire);
+
+        this.#wireContainerSvg.style.backgroundPositionX = `${this.#panX}px`;
+        this.#wireContainerSvg.style.backgroundPositionY = `${this.#panY}px`;
     }
 
     #networkAttach(network: Network) {
@@ -175,7 +255,18 @@ export class NetworkViewElement extends HTMLElement {
         node.addEventListener("removepart", this.#onNodePartOrSocketUpdate);
         node.addEventListener("removesocket", this.#onNodePartOrSocketUpdate);
 
-        nodeView.addEventListener("pointerdown", () => this.selectedNode = node);
+        nodeView.addEventListener("pointerdown", (e) => {
+            if ((e.buttons & 3) != 0) { // left + right
+                this.selectedNode = node;
+            }
+            
+            if ((e.buttons & 2) == 2) {
+                e.preventDefault();
+                this.dispatchEvent(new NodeOptionEvent("nodeoption", node, e));
+            }
+        });
+
+        nodeView.addEventListener("contextmenu", (e) => e.preventDefault());
 
         nodeView.addEventListener("socketdown", (e) => {
             if (this.#connectingFrom != null) return;
@@ -224,29 +315,12 @@ export class NetworkViewElement extends HTMLElement {
             this.#updateConnectingWire(e.parent);
         });
 
-        const proxyPart = (part: NodePart, slot: string): void => {
-            const proxySlot = document.createElement("slot");
-            proxySlot.name = `${this.#slotIdCounter++}`;
-            proxySlot.slot = slot;
-            nodeView.append(proxySlot);
-            this.#proxiedParts.set(part, proxySlot);
-            this.dispatchEvent(new PartVisiblityEvent("partshow", part, proxySlot.name));
-        };
-
-        const unproxyPart = (part: NodePart): void => {
-            const proxySlot = this.#proxiedParts.get(part);
-            if (proxySlot == null) return;
-            proxySlot.remove();
-            this.#proxiedParts.delete(part);
-            this.dispatchEvent(new PartVisiblityEvent("parthide", part, proxySlot.name));
-        };
-
-        nodeView.addEventListener("partshow", (e) => proxyPart(e.part, e.slot));
-        nodeView.addEventListener("parthide", (e) => unproxyPart(e.part));
+        nodeView.addEventListener("partshow", (e) => this.#proxyPart(nodeView, e.part, e.slot));
+        nodeView.addEventListener("parthide", (e) => this.#unproxyPart(e.part));
 
         node.parts.forEach((part) => {
             const slot = nodeView.getPartSlot(part);
-            if (slot != null) proxyPart(part, slot);
+            if (slot != null) this.#proxyPart(nodeView, part, slot);
         });
     }
 
@@ -360,6 +434,23 @@ export class NetworkViewElement extends HTMLElement {
         const bcpx = this.#connectingFrom.direction == "in" ? diff / 2 : -diff / 2;
         this.#connecting.setAttribute("d", `M ${sx},${sy} C ${sx + acpx},${sy},${dx + bcpx},${dy},${dx},${dy}`);
     }
+
+    #proxyPart(nodeView: NodeViewElement, part: NodePart, slot: string): void {
+        const proxySlot = document.createElement("slot");
+        proxySlot.name = `${this.#slotIdCounter++}`;
+        proxySlot.slot = slot;
+        nodeView.append(proxySlot);
+        this.#proxiedParts.set(part, proxySlot);
+        this.dispatchEvent(new PartVisiblityEvent("partshow", part, proxySlot.name));
+    }
+
+    #unproxyPart(part: NodePart): void {
+        const proxySlot = this.#proxiedParts.get(part);
+        if (proxySlot == null) return;
+        proxySlot.remove();
+        this.#proxiedParts.delete(part);
+        this.dispatchEvent(new PartVisiblityEvent("parthide", part, proxySlot.name));
+    }
 }
 
 export interface NetworkViewElement {
@@ -389,4 +480,11 @@ export interface NetworkViewElementEventMap extends HTMLElementEventMap {
     "partshow": PartVisiblityEvent;
     "parthide": PartVisiblityEvent;
     "nodeselect": CustomEvent<Node | null>;
+    "nodeoption": NodeOptionEvent;
+}
+
+export class NodeOptionEvent extends Event {
+    constructor(type: string, public readonly node: Node | null, public readonly parent: PointerEvent) {
+        super(type);
+    }
 }

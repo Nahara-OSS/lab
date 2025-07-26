@@ -58,3 +58,28 @@ input {
         border: 1px solid #7f7f7f;
     }
 }
+
+.context-menu {
+    position: absolute;
+    border: 1px solid #7f7f7f;
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+
+    > .label {
+        user-select: none;
+        padding: 2px 12px;
+        height: 24px;
+        box-sizing: border-box;
+        align-content: center;
+        background-color: #3f3f3f;
+        color: #ffffff;
+    }
+
+    > button {
+        box-shadow: none;
+        border: 0;
+        width: 100%;
+        text-align: left;
+    }
+}
