@@ -1,4 +1,4 @@
-import type { NodeCreateOptions, NodePart, Socket } from "../mod.ts";
+import type { NodeCreateOptions, NodePart, Socket, SocketDirection } from "../mod.ts";
 import { createNumberInputField, type NodeFactory, type WgslContext, WgslNode } from "./nodes.base.ts";
 
 interface GeneratedNodeClass<T = object> {
@@ -26,6 +26,7 @@ export class ConstF32Node extends WgslNode {
     static readonly factory: NodeFactory<ConstF32Node> = {
         name: "Scalar",
         type: ConstF32Node,
+        initials: [{ id: "constant", direction: "out", type: "f32", name: "Constant" }],
         populatePartInterface: (node, part) => {
             const div = document.createElement("div");
             if (part != node.uiPart) return div;
@@ -64,6 +65,7 @@ export function constantVectorNode(dim: number, dtype: string, name: string): Ge
         static readonly factory: NodeFactory<ConstantVectorNode> = {
             name,
             type: ConstantVectorNode,
+            initials: [{ id: "constant", direction: "out", type: dtype, name: "Constant" }],
             populatePartInterface: (node, part) => {
                 const div = document.createElement("div");
                 if (part != node.uiPart) return div;
@@ -115,7 +117,19 @@ export function splitVectorNode(components: [string, string][], dtype: string, n
             return `${ctx.nameOf("input")}.${components[idx][0]}`;
         }
 
-        static readonly factory: NodeFactory<SplitVectorNode> = { name, type: SplitVectorNode };
+        static readonly factory: NodeFactory<SplitVectorNode> = {
+            name,
+            type: SplitVectorNode,
+            initials: [
+                { id: "input", direction: "in", type: dtype, name: "Vector" },
+                ...components.map(([id, label]) => ({
+                    id,
+                    direction: "out" as SocketDirection,
+                    type: "f32",
+                    name: label,
+                })),
+            ],
+        };
     };
 }
 
@@ -155,7 +169,19 @@ export function mergeVectorNode(components: [string, string][], dtype: string, n
             throw new Error("Invalid socket");
         }
 
-        static readonly factory: NodeFactory<MergeVectorNode> = { name, type: MergeVectorNode };
+        static readonly factory: NodeFactory<MergeVectorNode> = {
+            name,
+            type: MergeVectorNode,
+            initials: [
+                { id: "output", direction: "out", type: dtype, name: "Vector" },
+                ...components.map(([id, label]) => ({
+                    id,
+                    direction: "in" as SocketDirection,
+                    type: "f32",
+                    name: label,
+                })),
+            ],
+        };
     };
 }
 
@@ -204,6 +230,11 @@ export function mathNode(dtype: string, name: string): GeneratedNodeClass {
         static readonly factory: NodeFactory<MathNode> = {
             name,
             type: MathNode,
+            initials: [
+                { id: "a", direction: "in", type: dtype, name: "A" },
+                { id: "b", direction: "in", type: dtype, name: "B" },
+                { id: "output", direction: "out", type: dtype, name: "Output" },
+            ],
             populatePartInterface: (node) => {
                 const select = document.createElement("select");
                 select.style.width = "100%";

@@ -1,4 +1,4 @@
-import { Node, type NodeCreateOptions, type NodePart, type Socket } from "../mod.ts";
+import { Node, type NodeCreateOptions, type NodePart, type Socket, SocketInfo } from "../mod.ts";
 
 export abstract class WgslNode extends Node {
     abstract wgslSetup(ctx: WgslContext): void;
@@ -14,6 +14,7 @@ export interface WgslContext {
 export interface NodeFactory<N extends Node> {
     readonly name: string;
     type: { new (options: NodeCreateOptions): N };
+    initials?: SocketInfo[];
     populatePartInterface?(node: N, part: NodePart): Element;
 }
 

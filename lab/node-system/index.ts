@@ -60,7 +60,6 @@ view.addEventListener("pointerdown", (e) => {
 
 view.addEventListener("nodeoption", (e) => {
     existingMenu?.remove();
-
     const menu = document.createElement("div");
     menu.classList.add("context-menu");
     menu.style.left = `${e.parent.clientX}px`;
@@ -133,7 +132,6 @@ view.addEventListener("nodeoption", (e) => {
 view.addEventListener("contextmenu", (e) => e.preventDefault());
 
 const partToElement = new Map<NodePart, Element>();
-
 view.addEventListener("partshow", (e) => {
     const factory = factories.find((factory) => typeof factory != "string" && e.part.node instanceof factory.type);
     if (factory == null) return;
@@ -145,7 +143,6 @@ view.addEventListener("partshow", (e) => {
         partToElement.set(e.part, element);
     }
 });
-
 view.addEventListener("parthide", (e) => {
     const element = partToElement.get(e.part);
 
@@ -153,6 +150,52 @@ view.addEventListener("parthide", (e) => {
         element.remove();
         partToElement.delete(e.part);
     }
+});
+view.addEventListener("airconnect", (e) => {
+    if (e.source.direction == "in" && e.source.targets.size >= e.source.maxInputs) return;
+
+    existingMenu?.remove();
+    const menu = document.createElement("div");
+    menu.classList.add("context-menu");
+    menu.style.left = `${e.parent.clientX}px`;
+    menu.style.top = `${e.parent.clientY + 1}px`;
+    existingMenu = menu;
+
+    factories.forEach((factory) => {
+        if (typeof factory == "string") return;
+        if (factory.initials == null) return;
+        const targets = factory.initials.filter((socket) =>
+            socket.type == e.source.type && socket.direction != e.source.direction
+        );
+        if (targets.length == 0) return;
+
+        const label = document.createElement("div");
+        label.classList.add("label");
+        label.textContent = factory.name;
+        menu.append(label);
+
+        for (const socket of targets) {
+            const btn = document.createElement("button");
+            btn.textContent = socket.name ?? socket.id;
+
+            btn.addEventListener("click", () => {
+                const node = new factory.type({
+                    name: factory.name,
+                    x: e.parent.clientX - view.panX - (socket.direction == "in" ? 0 : 160),
+                    y: e.parent.clientY - view.panY,
+                });
+                view.network?.addNode(node);
+                node.sockets.get(socket.id)?.connect(e.source);
+
+                existingMenu?.remove();
+                existingMenu = null;
+            });
+
+            menu.append(btn);
+        }
+    });
+
+    document.body.append(menu);
 });
 
 document.body.append(view);

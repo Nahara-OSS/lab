@@ -23,6 +23,8 @@ Node network view navigation controls:
 - Drag and drop socket of the same type to connect.
   - Most of the socket only accepts at most 1 input.
   - Some socket can accept more than 1 input.
+- Quickly create and connect to new node by dragging socket to the air.
+  - Only socket of compatible type will be shown.
 
 ## Goals
 In order to consider this experiment a success, all required goals must be achieved.

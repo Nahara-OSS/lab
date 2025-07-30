@@ -19,7 +19,14 @@ export class VertexInputNode extends WgslNode {
         }
     }
 
-    static readonly factory: NodeFactory<VertexInputNode> = { name: "Vertex Input", type: VertexInputNode };
+    static readonly factory: NodeFactory<VertexInputNode> = {
+        name: "Vertex Input",
+        type: VertexInputNode,
+        initials: [
+            { id: "position", direction: "out", type: "vec4f", name: "Position" },
+            { id: "uv", direction: "out", type: "vec2f", name: "UV" },
+        ],
+    };
 }
 
 export class RenderOutputNode extends Node {
@@ -96,6 +103,7 @@ export class RenderOutputNode extends Node {
         return {
             name: "Render Output",
             type: RenderOutputNode,
+            initials: [{ id: "color", direction: "in", type: "vec4f", name: "Color" }],
             populatePartInterface: (node, part) => {
                 const div = document.createElement("div");
                 if (part != node.uiPart) return div;

@@ -259,7 +259,7 @@ export class NetworkViewElement extends HTMLElement {
             if ((e.buttons & 3) != 0) { // left + right
                 this.selectedNode = node;
             }
-            
+
             if ((e.buttons & 2) == 2) {
                 e.preventDefault();
                 this.dispatchEvent(new NodeOptionEvent("nodeoption", node, e));
@@ -280,6 +280,7 @@ export class NetworkViewElement extends HTMLElement {
             const pointerUp = (e: PointerEvent) => {
                 if (this.#connectingFrom != null) {
                     // TODO: Open node picker menu when connecting to air
+                    this.dispatchEvent(new AirConnectEvent("airconnect", this.#connectingFrom, e));
                     this.#connectingFrom = null;
                     this.#updateConnectingWire(e);
                 }
@@ -481,10 +482,17 @@ export interface NetworkViewElementEventMap extends HTMLElementEventMap {
     "parthide": PartVisiblityEvent;
     "nodeselect": CustomEvent<Node | null>;
     "nodeoption": NodeOptionEvent;
+    "airconnect": AirConnectEvent;
 }
 
 export class NodeOptionEvent extends Event {
     constructor(type: string, public readonly node: Node | null, public readonly parent: PointerEvent) {
+        super(type);
+    }
+}
+
+export class AirConnectEvent extends Event {
+    constructor(type: string, public readonly source: Socket, public readonly parent: PointerEvent) {
         super(type);
     }
 }
